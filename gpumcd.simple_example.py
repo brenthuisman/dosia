@@ -1,9 +1,10 @@
-import ctypes,numpy as np
+import ctypes,numpy as np,os
 from nki import gpumcd
 from os import path
 import image
 
-rootdir = "D:/postdoc/analyses/gpumcd_python"
+rootdir = "D:\\postdoc\\analyses\\gpumcd_python"
+os.chdir(str(rootdir))
 
 print('Start of program.')
 
@@ -69,8 +70,7 @@ lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
-##TODO abspath doesnt work for some reason?
-libgpumcd = ctypes.CDLL(rootdir+"/libgpumcd.dll")
+libgpumcd = ctypes.CDLL(path.join(rootdir,"libgpumcd.dll"))
 
 print('libgpumcd loaded, starting gpumcd init...')
 
