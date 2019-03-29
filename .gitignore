@@ -1,5 +1,7 @@
 *
 !*.py
+!*.cc
+!*.h
 !*/
 !.gitignore
 !LICENSE
