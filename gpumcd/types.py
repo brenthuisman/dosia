@@ -1,7 +1,16 @@
-import ctypes
+import ctypes,operator
+from functools import reduce
+import image
 
 class ModifierOrientation(ctypes.Structure):
+	'''
+    NOT_PRESENT = -1,
+    IECX = 0,
+    IECY = 1
+	'''
 	_fields_ = [("value", ctypes.c_int)]
+	def __init__(self,value=-1):
+		self.value = -1
 
 class Int3(ctypes.Structure):
 	_fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("z", ctypes.c_int)]
@@ -30,12 +39,37 @@ class PlanSettings(ctypes.Structure):
 	_fields_ = [("goalSfom", ctypes.c_float), ("statThreshold", ctypes.c_float), ("maxNumParticles", ctypes.c_uint64), ("densityThresholdSfom", ctypes.c_float), ("densityThresholdOutput", ctypes.c_float), ("useApproximateStatistics", ctypes.c_int)]
 
 class Phantom(ctypes.Structure):
+	'''
+	use the massDensityArray_data and mediumIndexArray_data members. they're not part of the struct, but are what the massDensityArray and mediumIndexArray pointers point to.
+	'''
 	_fields_ = [("numVoxels", Int3), ("voxelSizes", Float3), ("phantomCorner", Float3), ("massDensityArray", ctypes.POINTER(ctypes.c_float)), ("mediumIndexArray", ctypes.POINTER(ctypes.c_float))]
-	def __init__(self,numVoxels):
-		elems = (ctypes.c_float * numVoxels)()
-		elems2 = (ctypes.c_float * numVoxels)()
-		self.massDensityArray = ctypes.cast(elems,ctypes.POINTER(ctypes.c_float))
-		self.mediumIndexArray = ctypes.cast(elems2,ctypes.POINTER(ctypes.c_float))
+	def __init__(self,*args,**kwargs):
+		if 'image' in kwargs:
+			# contruct from image.imagehu2dens_table,dens2mat_table):
+			'''
+			specify an image containing hounsfield units (so, a CT), and two tables that convert these hounsfield values to densities, and densities to materials. these materials must correspond to the materials provided to gpumcd upon init.
+			'''
+			assert isinstance(kwargs['image'],image.image)
+
+		elif len(args) == 0 and 'DimSize' in kwargs and 'ElementSpacing' in kwargs:
+			#new blank image
+			if not isinstance(kwargs['DimSize'],list) or not isinstance(kwargs['ElementSpacing'],list):
+				raise IOError("New phantom must be instantiated with lists for Dimsize and ElementSpacing.")
+			elif len(kwargs['DimSize']) is len(kwargs['ElementSpacing']) is 3:
+				nVoxels=reduce(operator.mul,kwargs['DimSize'])
+				self.numVoxels.x=kwargs['DimSize'][0]
+				self.numVoxels.y=kwargs['DimSize'][1]
+				self.numVoxels.z=kwargs['DimSize'][2]
+				self.voxelSizes.x=kwargs['ElementSpacing'][0]
+				self.voxelSizes.y=kwargs['ElementSpacing'][1]
+				self.voxelSizes.z=kwargs['ElementSpacing'][2]
+				self.massDensityArray_data = (ctypes.c_float * nVoxels)()
+				self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
+				self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
+				self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
+			else:
+				raise IOError("New phantom instantiated with mismatched dimensions.")
+
 
 class JawInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("j1", Pair), ("j2", Pair)]

@@ -1,7 +1,46 @@
-import ctypes,numpy as np,os,math
+import ctypes,numpy as np,os,math,configparser,argparse
 import gpumcd
 from os import path
 import image
+import pydicom
+
+parser = argparse.ArgumentParser(description='secret')
+parser.add_argument('dicomdir') #FIXME: or file?
+# parser.add_argument('--nosum',action='store_true')
+args = parser.parse_args()
+
+config = configparser.ConfigParser()
+
+
+
+
+
+fname = args.dicomdir
+
+data = pydicom.dcmread(fname,force=True)
+
+print(dir(data.BeamSequence[0].ControlPointSequence[0]))
+
+
+weights_beam_0 = []
+
+#for beam in data.BeamSequence:
+	#i = 0
+	#for cp in beam.ControlPointSequence:
+		##print(i,cp.CumulativeMetersetWeight)
+		#weights_beam_0.append( cp.CumulativeMetersetWeight )
+		#i+=1
+for cp in data.BeamSequence[0].ControlPointSequence:
+	weights_beam_0.append( cp.CumulativeMetersetWeight )
+
+for i in range(len(weights_beam_0)):
+	print(i, '\t', weights_beam_0[i], '\t', end="")
+	try:
+		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
+		print(weights_beam_0[i])
+	except:
+		pass
+
 
 outputdir = "D:\\postdoc\\analyses\\gpumcd_python"
 
@@ -43,14 +82,14 @@ phantom.phantomCorner.z = -5.0
 
 nvox = phantom.numVoxels.x*phantom.numVoxels.y*phantom.numVoxels.z
 for i in range(nvox):
-	phantom.massDensityArray_data[i]=1
-	phantom.mediumIndexArray_data[i]=0
+	phantom.massDensityArray[i]=1
+	phantom.mediumIndexArray[i]=0
 
 lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
-Engine = gpumcd.__gpumcd__()
+Engine = gpumcd.Gpumcd()
 #libgpumcd = ctypes.CDLL(path.join(rootdir,"libgpumcd.dll"))
 
 print('libgpumcd loaded, starting gpumcd init...')
@@ -126,4 +165,3 @@ dose = image.image(DimSize=[50,50,50], ElementSpacing=[0.2,0.2,0.2], dt='<f4')
 Engine.get_dose(dose.get_ctypes_pointer_to_data())
 
 dose.saveas(path.join(outputdir,'dose.xdr'))
-dose.saveas(path.join(outputdir,'dose.mhd'))
