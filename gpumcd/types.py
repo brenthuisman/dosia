@@ -44,21 +44,31 @@ class Phantom(ctypes.Structure):
 	'''
 	_fields_ = [("numVoxels", Int3), ("voxelSizes", Float3), ("phantomCorner", Float3), ("massDensityArray", ctypes.POINTER(ctypes.c_float)), ("mediumIndexArray", ctypes.POINTER(ctypes.c_float))]
 	def __init__(self,*args,**kwargs):
-		self.materials=[]
-		if isinstance(args[0],image.image):
+		if 'massDensityArray_image' in kwargs and 'mediumIndexArray_image' in kwargs:
 			'''
 			specify an image containing hounsfield units (so, a CT), and two tables that convert these hounsfield values to densities, and densities to materials (hu2dens_table,dens2mat_table as kwargs). these materials must correspond to the materials provided to gpumcd upon init.
 			'''
-			im = args[0]
-			if im.ndim() is not 3:
+			dens = kwargs['massDensityArray_image']
+			med = kwargs['mediumIndexArray_image']
+			if not isinstance(med,image.image) or not isinstance(dens,image.image):
+				raise IOError("Could not instantiate phantom, either or both massDensityArray_image and mediumIndexArray_image are not valid instances of image.image.")
+			if dens.ndim() is not 3 or med.ndim() is not 3:
 				raise IOError("Sorry, phantoms can only be instantiated with 3D images.")
-			self.massDensityArray_data = (ctypes.c_float * im.nvox())()
-			self.mediumIndexArray_data = (ctypes.c_float * im.nvox())()
-			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
-			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
-			if 'hu2dens_table' in kwargs and 'dens2mat_table' in kwargs:
-				self.__hu2dens2mat__(im.imdata,self.massDensityArray_data,self.mediumIndexArray_data,**kwargs)
-				self.materials.extend(kwargs['dens2mat_table'][1])
+			# if dens.nvox() is not med.nvox():
+			# 	print(dens.nvox(),med.nvox())
+			# 	raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
+			# FIXME check that imdata type is <i4
+			self.massDensityArray = dens.get_ctypes_pointer_to_data()
+			self.mediumIndexArray = med.get_ctypes_pointer_to_data()
+			self.numVoxels.x = med.header['DimSize'][0]
+			self.numVoxels.y = med.header['DimSize'][1]
+			self.numVoxels.z = med.header['DimSize'][2]
+			self.voxelSizes.x = med.header['ElementSpacing'][0]
+			self.voxelSizes.y = med.header['ElementSpacing'][1]
+			self.voxelSizes.z = med.header['ElementSpacing'][2]
+			self.phantomCorner.x = med.header['Offset'][0]
+			self.phantomCorner.y = med.header['Offset'][1]
+			self.phantomCorner.z = med.header['Offset'][2]
 
 		elif isinstance(args[0],int):
 			'''
@@ -71,22 +81,6 @@ class Phantom(ctypes.Structure):
 			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
 		else:
 			raise IOError("Could not instantiate phantom, no valid arguments provided.")
-	def __hu2dens2mat__(self,*args,**kwargs):
-		try:
-			hu_arr = args[0] #numpy array with CT values
-			dens_arr = args[1]
-			mat_arr = args[2]
-			hu2dens_table = kwargs['hu2dens_table'] #list of two lists
-			dens2mat_table = kwargs['dens2mat_table'] #list of two lists
-		except:
-			raise IOError("You called __hu2dens2mat__ with wrong or invalid arguments.")
-
-		continuous_material_index_axis = list(range(len(dens2mat_table[0])))
-		for i,value in enumerate(hu_arr):
-			dens_arr[i] = np.interp(value,hu2dens_table[0],hu2dens_table[1])
-			if dens_arr[i] < 0:
-				dens_arr[i] = 0
-			mat_arr[i] = np.interp(dens_arr[i],dens2mat_table[0],continuous_material_index_axis)
 
 
 class JawInformation(ctypes.Structure):
