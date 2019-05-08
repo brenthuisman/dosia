@@ -50,8 +50,8 @@ class __gpumcd__():
 	'''
 	def __init__(self):
 		os.chdir(path.join(path.dirname(path.abspath(__file__)),"dll"))
-		print (path.join(path.dirname(path.abspath(__file__)),"dll","libgpumcd.dll"))
 		libgpumcd = ctypes.CDLL(path.join(path.dirname(path.abspath(__file__)),"dll","libgpumcd.dll"))
+		print (path.join(path.dirname(path.abspath(__file__)),"dll","libgpumcd.dll"),'loaded.')
 
 		self.init = libgpumcd.init_gpumcd
 		self.init.argtypes = [

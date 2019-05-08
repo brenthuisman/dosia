@@ -52,23 +52,43 @@ class Phantom(ctypes.Structure):
 			med = kwargs['mediumIndexArray_image']
 			if not isinstance(med,image.image) or not isinstance(dens,image.image):
 				raise IOError("Could not instantiate phantom, either or both massDensityArray_image and mediumIndexArray_image are not valid instances of image.image.")
-			if dens.ndim() is not 3 or med.ndim() is not 3:
+			if dens.ndim() != 3 or med.ndim() is not 3:
 				raise IOError("Sorry, phantoms can only be instantiated with 3D images.")
-			# if dens.nvox() is not med.nvox():
-			# 	print(dens.nvox(),med.nvox())
-			# 	raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
-			# FIXME check that imdata type is <i4
+			if dens.imdata.dtype != 'float32':
+				print("dens is not float")
+				dens.imdata = dens.imdata.astype('<f4')
+			if med.imdata.dtype != 'float32':
+				print("med is not float")
+				med.imdata = med.imdata.astype('<f4')
+			if dens.nvox() != med.nvox():
+				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
+
+			if(False):
+				self.massDensityArray_data = (ctypes.c_float * dens.nvox())()
+				self.mediumIndexArray_data = (ctypes.c_float * med.nvox())()
+				densarr = dens.imdata.flatten()
+				medarr = med.imdata.flatten()
+				print('brent',len(densarr))
+				for i in range(len(densarr)):
+					self.massDensityArray_data[i] = densarr[i]
+					self.mediumIndexArray_data[i] = medarr[i]
+					print (medarr[i])
+					print (self.mediumIndexArray_data[i])
+				self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
+				self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
 			self.massDensityArray = dens.get_ctypes_pointer_to_data()
 			self.mediumIndexArray = med.get_ctypes_pointer_to_data()
 			self.numVoxels.x = med.header['DimSize'][0]
 			self.numVoxels.y = med.header['DimSize'][1]
 			self.numVoxels.z = med.header['DimSize'][2]
-			self.voxelSizes.x = med.header['ElementSpacing'][0]
-			self.voxelSizes.y = med.header['ElementSpacing'][1]
-			self.voxelSizes.z = med.header['ElementSpacing'][2]
-			self.phantomCorner.x = med.header['Offset'][0]
-			self.phantomCorner.y = med.header['Offset'][1]
-			self.phantomCorner.z = med.header['Offset'][2]
+			# Convert mm to cm
+			self.voxelSizes.x = med.header['ElementSpacing'][0]/10.
+			self.voxelSizes.y = med.header['ElementSpacing'][1]/10.
+			self.voxelSizes.z = med.header['ElementSpacing'][2]/10.
+			# Half voxel shift, and divison by ten
+			self.phantomCorner.x = med.header['Offset'][0]/10. - med.header['ElementSpacing'][0]/20.
+			self.phantomCorner.y = med.header['Offset'][1]/10. - med.header['ElementSpacing'][1]/20.
+			self.phantomCorner.z = med.header['Offset'][2]/10. - med.header['ElementSpacing'][2]/20.
 
 		elif isinstance(args[0],int):
 			'''
