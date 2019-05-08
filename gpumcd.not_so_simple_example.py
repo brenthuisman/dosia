@@ -117,7 +117,6 @@ frame1size = 5
 frame2size = 1
 
 BeamFrames = gpumcd.make_c_array(gpumcd.BeamFrame,2)
-# BeamFrames = gpumcd.make_c_array(gpumcd.BeamFrame,1)
 BeamFrames[0]=gpumcd.BeamFrame(1)
 BeamFrames[0].beamInfo[0].relativeWeight = 100
 BeamFrames[0].beamInfo[0].isoCenter.x=0
@@ -133,21 +132,21 @@ BeamFrames[0].beamInfo[0].fieldMax.first=frame1size
 BeamFrames[0].beamInfo[0].fieldMax.second=frame1size
 BeamFrames[0].beamInfo[0].fieldMin.first=-frame1size
 BeamFrames[0].beamInfo[0].fieldMin.second=-frame1size
-# BeamFrames[1]=gpumcd.BeamFrame(1)
-# BeamFrames[1].beamInfo[0].relativeWeight = 100
-# BeamFrames[1].beamInfo[0].isoCenter.x=0
-# BeamFrames[1].beamInfo[0].isoCenter.y=0
-# BeamFrames[1].beamInfo[0].isoCenter.z=0
-# BeamFrames[1].beamInfo[0].collimatorAngle.first=0
-# BeamFrames[1].beamInfo[0].collimatorAngle.second=0
-# BeamFrames[1].beamInfo[0].couchAngle.first=0
-# BeamFrames[1].beamInfo[0].couchAngle.second=0
-# BeamFrames[1].beamInfo[0].gantryAngle.first=90
-# BeamFrames[1].beamInfo[0].gantryAngle.second=90
-# BeamFrames[1].beamInfo[0].fieldMax.first=frame2size
-# BeamFrames[1].beamInfo[0].fieldMax.second=frame2size
-# BeamFrames[1].beamInfo[0].fieldMin.first=-frame2size
-# BeamFrames[1].beamInfo[0].fieldMin.second=-frame2size
+BeamFrames[1]=gpumcd.BeamFrame(1)
+BeamFrames[1].beamInfo[0].relativeWeight = 100
+BeamFrames[1].beamInfo[0].isoCenter.x=0
+BeamFrames[1].beamInfo[0].isoCenter.y=0
+BeamFrames[1].beamInfo[0].isoCenter.z=0
+BeamFrames[1].beamInfo[0].collimatorAngle.first=0
+BeamFrames[1].beamInfo[0].collimatorAngle.second=0
+BeamFrames[1].beamInfo[0].couchAngle.first=0
+BeamFrames[1].beamInfo[0].couchAngle.second=0
+BeamFrames[1].beamInfo[0].gantryAngle.first=90
+BeamFrames[1].beamInfo[0].gantryAngle.second=90
+BeamFrames[1].beamInfo[0].fieldMax.first=frame2size
+BeamFrames[1].beamInfo[0].fieldMax.second=frame2size
+BeamFrames[1].beamInfo[0].fieldMin.first=-frame2size
+BeamFrames[1].beamInfo[0].fieldMin.second=-frame2size
 
 print('executing simulation...')
 
@@ -163,7 +162,6 @@ end_time = time.time()
 print("runtime gpumcd:",end_time-start_time)
 
 Engine.get_dose(dose.get_ctypes_pointer_to_data())
-# dose.imdata = dose.imdata.reshape(tuple(reversed(dose.imdata.shape))).swapaxes(0, dose.ndim() - 1)
 
 dose.saveas(path.join(outputdir,'dose.xdr'))
 dose.saveas(path.join(outputdir,'dose.mhd'))
