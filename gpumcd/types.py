@@ -34,9 +34,24 @@ class Pair(ctypes.Structure):
 
 class PhysicsSettings(ctypes.Structure):
 	_fields_ = [("photonTransportCutoff", ctypes.c_float), ("electronTransportCutoff", ctypes.c_float), ("inputMaxStepLength", ctypes.c_float), ("magneticField", Float3), ("referenceMedium", ctypes.c_int), ("useElectronInAirSpeedup", ctypes.c_int), ("electronInAirSpeedupDensityThreshold", ctypes.c_float)]
+	def __init__(self):
+		self.photonTransportCutoff = 0.01
+		self.electronTransportCutoff = 0.189
+		self.inputMaxStepLength = 0.75
+		self.magneticField = Float3(0,0,0)
+		self.referenceMedium = -1
+		self.useElectronInAirSpeedup = 1
+		self.electronInAirSpeedupDensityThreshold = 0.002
 
 class PlanSettings(ctypes.Structure):
 	_fields_ = [("goalSfom", ctypes.c_float), ("statThreshold", ctypes.c_float), ("maxNumParticles", ctypes.c_uint64), ("densityThresholdSfom", ctypes.c_float), ("densityThresholdOutput", ctypes.c_float), ("useApproximateStatistics", ctypes.c_int)]
+	def __init__(self):
+		self.goalSfom = 2
+		self.statThreshold = 0.5
+		self.maxNumParticles = int(1e13)
+		self.densityThresholdSfom = 0.2
+		self.densityThresholdOutput = 0.0472
+		self.useApproximateStatistics = 1
 
 class Phantom(ctypes.Structure):
 	'''
@@ -63,19 +78,6 @@ class Phantom(ctypes.Structure):
 			if dens.nvox() != med.nvox():
 				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
 
-			if(False):
-				self.massDensityArray_data = (ctypes.c_float * dens.nvox())()
-				self.mediumIndexArray_data = (ctypes.c_float * med.nvox())()
-				densarr = dens.imdata.flatten()
-				medarr = med.imdata.flatten()
-				print('brent',len(densarr))
-				for i in range(len(densarr)):
-					self.massDensityArray_data[i] = densarr[i]
-					self.mediumIndexArray_data[i] = medarr[i]
-					print (medarr[i])
-					print (self.mediumIndexArray_data[i])
-				self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
-				self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
 			self.massDensityArray = dens.get_ctypes_pointer_to_data()
 			self.mediumIndexArray = med.get_ctypes_pointer_to_data()
 			self.numVoxels.x = med.header['DimSize'][0]

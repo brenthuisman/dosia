@@ -9,10 +9,8 @@ data = pydicom.dcmread(fname,force=True)
 
 try:
 	print (data.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID) # if fname is a dose, this value corresponds to the plan's SOPInstanceUID
-	print("dis nen doos")
 except:
 	print (data.SOPInstanceUID)
-	print("ne planneke")
 
 #print(dir(data.BeamSequence[0].ControlPointSequence[0]))
 
