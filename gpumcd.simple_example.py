@@ -50,7 +50,7 @@ lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
-Engine = gpumcd.__gpumcd__()
+Engine = gpumcd.__gpumcd__("D:/postdoc/gpumcd_data/dll")
 #libgpumcd = ctypes.CDLL(path.join(rootdir,"libgpumcd.dll"))
 
 print('libgpumcd loaded, starting gpumcd init...')

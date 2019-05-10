@@ -97,13 +97,15 @@ class Phantom(ctypes.Structure):
 			"Default" constructor, reserving int values that you provide in massDensityArray_data and mediumIndexArray_data. Rest is up to you!
 			'''
 			nVoxels=args[0]
-			self.massDensityArray_data = (ctypes.c_float * nVoxels)()
+			self.massDensityArray_data = (ctypes.c_float * nVoxels)() #needs to be accessible because pointer does not refer to data outside this struct.
 			self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
 			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
 			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
 		else:
 			raise IOError("Could not instantiate phantom, no valid arguments provided.")
 
+	def nvox(self):
+		return self.numVoxels.x*self.numVoxels.y*self.numVoxels.z
 
 class JawInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("j1", Pair), ("j2", Pair)]

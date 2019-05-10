@@ -1,94 +1,27 @@
 import ctypes,numpy as np,os,math,time
-import gpumcd
 from os import path
-import image
-
-sett = gpumcd.Settings("D:\\postdoc\\gpumcd_data")
-print(sett.subdirectories['hounsfield_conversion_dir'])
-print(sett.__dict__)
-quit()
-
-outputdir = "D:\\postdoc\\analyses\\gpumcd_python"
-
+import gpumcd,image
 
 print('Start of program.')
 
-hu2dens_table=[[],[]]
-with open(path.join(gpumcd_datadir,'hounsfield','hu2dens.ini'),'r') as f:
-	for line in f.readlines():
-		if line.startswith('#'):
-			continue
-		hu2dens_table[0].append(float(line.split()[0]))
-		hu2dens_table[1].append(float(line.split()[1]))
-dens2mat_table=[[],[]]
-with open(path.join(gpumcd_datadir,'hounsfield','dens2mat.ini'),'r') as f:
-	for line in f.readlines():
-		if line.startswith('#'):
-			continue
-		dens2mat_table[0].append(float(line.split()[0]))
-		dens2mat_table[1].append(line.split()[1])
+sett = gpumcd.Settings("D:\\postdoc\\gpumcd_data")
 
-dens=image.image(path.join(outputdir,'ct.xdr'))
-dens.ct_to_hu(-1000,1)
-dens.hu_to_density(hu2dens_table)
-med=dens.copy()
-materials = med.density_to_materialindex(dens2mat_table)
-dens.saveas(path.join(outputdir,'dens.xdr'))
-med.saveas(path.join(outputdir,'med.xdr'))
+casedir = "D:\\postdoc\\analyses\\gpumcd_python"
 
-phantom=gpumcd.Phantom(massDensityArray_image=dens,mediumIndexArray_image=med)
+ct_image=image.image(path.join(casedir,'ct.xdr'))
 
+ct = gpumcd.CT(sett,ct_image,-1000,1) #for dicoms, dont set intercept,slope.
 
-dose = image.image(DimSize=med.header['DimSize'], ElementSpacing=med.header['ElementSpacing'], Offset=med.header['Offset'], dt='<f4')
+# TODO RTbeam
 
-physicsSettings = gpumcd.PhysicsSettings()
-planSettings = gpumcd.PlanSettings()
-
-physicsSettings.photonTransportCutoff = 0.01
-physicsSettings.electronTransportCutoff = 0.189
-physicsSettings.inputMaxStepLength = 0.75
-physicsSettings.magneticField = gpumcd.Float3(0,0,0)
-physicsSettings.referenceMedium = -1
-physicsSettings.useElectronInAirSpeedup = 1
-physicsSettings.electronInAirSpeedupDensityThreshold = 0.002
-
-planSettings.goalSfom = 2
-planSettings.statThreshold = 0.5
-planSettings.maxNumParticles = int(1e13)
-planSettings.densityThresholdSfom = 0.2
-planSettings.densityThresholdOutput = 0.0472
-planSettings.useApproximateStatistics = 1
-
-lasterror=ctypes.create_string_buffer(1000)
-
-print('Scene definition loaded.')
-
-Engine = gpumcd.__gpumcd__(path.join(gpumcd_datadir,"dll"))
-
-print('libgpumcd loaded, starting gpumcd init...')
-
-max_streams = math.floor(Engine.get_available_vram(gpu_hardware_id)/Engine.estimate_vram_consumption(phantom.numVoxels.x*phantom.numVoxels.y*phantom.numVoxels.z))
-n_streams = min(max_streams,3)
-
-## TODO libgpumcd.initGpumcd.argtypes = ([c_char_p, c_int, c_char_p] etc etc
-
-start_time = time.time()
-
-print(type(ctypes.byref(lasterror)))
-
-retval = Engine.init(
-	gpu_hardware_id,
-	0,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/materials_clin"),
-	*gpumcd.strlist2charpp(materials),
-	physicsSettings,
-	phantom,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
-	n_streams,
-	ctypes.byref(lasterror)
-)
+machfile = "D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
+engine = gpumcd.Engine(sett,ct.phantom,ct.materials,machfile)
 
 print('gpumcd init done.')
+print (engine.lasterror())
+quit()
+start_time = time.time()
+
 
 print(retval,lasterror.value.decode('utf-8'))
 
