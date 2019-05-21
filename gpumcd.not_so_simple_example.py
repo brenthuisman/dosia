@@ -5,6 +5,7 @@ import gpumcd,image
 print('Start of program.')
 
 sett = gpumcd.Settings("D:\\postdoc\\gpumcd_data")
+print(sett.planSettings.goalSfom)
 
 casedir = "D:\\postdoc\\analyses\\gpumcd_python"
 
@@ -12,21 +13,24 @@ ct_image=image.image(path.join(casedir,'ct.xdr'))
 
 ct = gpumcd.CT(sett,ct_image,-1000,1) #for dicoms, dont set intercept,slope.
 
+
+
 # TODO RTbeam
 
 machfile = "D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
+
 engine = gpumcd.Engine(sett,ct.phantom,ct.materials,machfile)
 
 print('gpumcd init done.')
+
 print (engine.lasterror())
-quit()
+
 start_time = time.time()
 
 
-print(retval,lasterror.value.decode('utf-8'))
 
 frame1size = 5
-frame2size = 5
+frame2size = 3
 
 BeamFrames = gpumcd.make_c_array(gpumcd.BeamFrame,2)
 BeamFrames[0]=gpumcd.BeamFrame(1)
@@ -62,18 +66,18 @@ BeamFrames[1].beamInfo[0].fieldMin.second=-frame2size
 
 print('executing simulation...')
 
-retval = Engine.execute_beamlets(
+retval = engine.__gpumcd_object__.execute_beamlets(
 	*gpumcd.c_array_to_pointer(BeamFrames,True),
-	planSettings
+	sett.planSettings
 )
-
-print(retval)
 
 end_time = time.time()
 
+print (engine.lasterror())
+
 print("runtime gpumcd:",end_time-start_time)
 
-Engine.get_dose(dose.get_ctypes_pointer_to_data())
+engine.get_dose(ct.dosemap)
 
-dose.saveas(path.join(outputdir,'dose.xdr'))
-dose.saveas(path.join(outputdir,'dose.mhd'))
+ct.dosemap.saveas(path.join(casedir,'dose.xdr'))
+ct.dosemap.saveas(path.join(casedir,'dose.mhd'))

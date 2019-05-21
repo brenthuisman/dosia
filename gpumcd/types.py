@@ -78,8 +78,18 @@ class Phantom(ctypes.Structure):
 			if dens.nvox() != med.nvox():
 				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
 
-			self.massDensityArray = dens.get_ctypes_pointer_to_data()
-			self.mediumIndexArray = med.get_ctypes_pointer_to_data()
+			# self.massDensityArray = dens.get_ctypes_pointer_to_data()
+			# self.mediumIndexArray = med.get_ctypes_pointer_to_data()
+
+			nVoxels =  med.header['DimSize'][0]* med.header['DimSize'][1]* med.header['DimSize'][2]
+			self.massDensityArray_data = (ctypes.c_float * nVoxels)() #needs to be accessible because pointer does not refer to data outside this struct.
+			self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
+			for i,(d,m) in enumerate(zip( dens.imdata.flatten(),med.imdata.flatten() ) ):
+				self.massDensityArray_data[i] = d
+				self.mediumIndexArray_data[i] = m
+			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
+			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
+
 			self.numVoxels.x = med.header['DimSize'][0]
 			self.numVoxels.y = med.header['DimSize'][1]
 			self.numVoxels.z = med.header['DimSize'][2]

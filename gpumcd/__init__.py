@@ -41,7 +41,7 @@ class Settings():
 				'electronInAirSpeedupDensityThreshold':'0.002'
 			},
 			'gpumcd_plansettings':{
-				'goalSfom':'1',
+				'goalSfom':'2',
 				'statThreshold':'0.5',
 				'maxNumParticles':'1e13',
 				'densityThresholdSfom':'0.2',
@@ -169,14 +169,17 @@ class Engine():
 
 		self.__gpumcd_object__ = __gpumcd__(self.settings.directories['gpumcd_dll'])
 
-		self.__lasterror__=ctypes.create_string_buffer(1000)
+		self.__lasterror__ = ctypes.create_string_buffer(1000)
+
+		# self.__gpumcd_object__.get_available_vram(0) #FIXME deze boyo geeft error...
 
 		max_streams = math.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox()))
 		self.num_parallel_streams = min(max_streams,3)
+		# self.num_parallel_streams = 1
 
+		#print (self.num_parallel_streams)
 
-
-		self.__gpumcd_object__.init(
+		self.__lasterrorcode__ = self.__gpumcd_object__.init(
 			self.settings.debug['cudaDeviceId'],
 			self.settings.debug['verbose'],
 			str2charp(self.settings.directories['material_data']),
@@ -188,13 +191,27 @@ class Engine():
 			ctypes.byref(self.__lasterror__)
 		)
 
-		print(self.__lasterror__.value.decode('utf-8'))
-
 	def lasterror(self):
-		return self.__lasterror__.value.decode('utf-8')
+		return self.__lasterrorcode__,self.__lasterror__.value.decode('utf-8')
 
+	def execute_beamlets(self,beamframes):
+		assert(isinstance(beamframes,BeamFrame))
+		self.__lasterrorcode__ = self.__gpumcd_object__.execute_beamlets(
+			*c_array_to_pointer(beamframes,True),
+			self.settings.planSettings
+		)
 
+	def execute_segments(self,controlpoints):
+		assert(isinstance(controlpoints,ControlPoint))
+		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segments(
+			*c_array_to_pointer(controlpoints,True),
+			self.settings.planSettings
+		)
 
+	def get_dose(self,dosemap):
+		assert(isinstance(dosemap,image.image))
+		assert(self.phantom.nvox() == dosemap.nvox())
+		self.__gpumcd_object__.get_dose(dosemap.get_ctypes_pointer_to_data())
 
 
 class __gpumcd__():
