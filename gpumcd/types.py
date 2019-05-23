@@ -84,7 +84,11 @@ class Phantom(ctypes.Structure):
 			nVoxels =  med.header['DimSize'][0]* med.header['DimSize'][1]* med.header['DimSize'][2]
 			self.massDensityArray_data = (ctypes.c_float * nVoxels)() #needs to be accessible because pointer does not refer to data outside this struct.
 			self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
-			for i,(d,m) in enumerate(zip( dens.imdata.flatten(),med.imdata.flatten() ) ):
+
+			# put data in right order, as if saving to disk.
+			dens_imdata = np.asarray(dens.imdata.swapaxes(0, dens.header['NDims'] - 1),order='C').flatten()
+			med_imdata = np.asarray(med.imdata.swapaxes(0, med.header['NDims'] - 1),order='C').flatten()
+			for i,(d,m) in enumerate(zip( dens_imdata,med_imdata ) ):
 				self.massDensityArray_data[i] = d
 				self.mediumIndexArray_data[i] = m
 			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))

@@ -1,8 +1,82 @@
-import pydicom,sys
+import sys,image
+from scipy import ndimage
+import numpy as np
 
-fname = sys.argv[-1]
+dicom_directory = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals\2. HalsSupracl + C   3.0  B40s PLAN"
 
-data = pydicom.dcmread(fname,force=True)
+dicom_file = r"D:\postdoc\analyses\gpumcd_python\dicom\stijn\IMRTa\Monaco\F180307A_MonacoRecalc_Dose.dcm"
+
+xdr_file = r"D:\postdoc\analyses\gpumcd_python\med.xdr"
+
+dicom_directory_image = image.image(dicom_directory)
+# dicom_file_image = image.image(dicom_file)
+xdr_file_image = image.image(xdr_file)
+
+print(dicom_directory_image.imdata.shape)
+print(dicom_directory_image.header['ElementSpacing'])
+print(dicom_directory_image.header['Offset'])
+print(dicom_directory_image.header['NDims'])
+print(dicom_directory_image.header['DimSize'])
+
+# print(dicom_file_image.header['ElementSpacing'])
+# print(dicom_file_image.header['Offset'])
+# print(dicom_file_image.header['NDims'])
+# print(dicom_file_image.header['DimSize'])
+
+# print(xdr_file_image.header['ElementSpacing'])
+# print(xdr_file_image.header['Offset'])
+# print(xdr_file_image.header['NDims'])
+# print(xdr_file_image.header['DimSize'])
+
+
+
+
+
+# dicom_directory_image.imdata = ndimage.zoom(dicom_directory_image.imdata,0.3,order=1)
+
+# dicom_directory_image.imdata = dicom_directory_image.imdata.reshape(dicom_directory_image.imdata.shape[::-1])
+
+
+
+
+# dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR.mhd")
+
+
+xdr_file_image.resample([3,3,3])
+xdr_file_image.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized.mhd")
+
+dicom_directory_image.resample([3,3,3])
+print(dicom_directory_image.imdata.shape)
+print(dicom_directory_image.header['ElementSpacing'])
+print(dicom_directory_image.header['Offset'])
+print(dicom_directory_image.header['NDims'])
+print(dicom_directory_image.header['DimSize'])
+
+
+# dicom_directory_image.imdata = dicom_directory_image.imdata.reshape(dicom_directory_image.imdata.shape[::-1])
+
+
+
+dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR_RESIZED.mhd")
+
+
+
+
+
+
+
+quit()
+
+
+
+
+
+
+
+
+# fname = sys.argv[-1]
+
+# data = pydicom.dcmread(fname,force=True)
 
 # print(dir(data))
 

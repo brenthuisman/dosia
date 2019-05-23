@@ -212,6 +212,8 @@ class Engine():
 		assert(isinstance(dosemap,image.image))
 		assert(self.phantom.nvox() == dosemap.nvox())
 		self.__gpumcd_object__.get_dose(dosemap.get_ctypes_pointer_to_data())
+		indata = np.asarray(dosemap.imdata, order='F')
+		dosemap.imdata = indata.reshape(tuple(reversed(dosemap.header['DimSize']))).swapaxes(0, dosemap.header['NDims'] - 1)
 
 
 class __gpumcd__():
