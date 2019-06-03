@@ -1,6 +1,4 @@
-import sys,image
-from scipy import ndimage
-import numpy as np
+import sys,image,numpy as np
 
 dicom_directory = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals\2. HalsSupracl + C   3.0  B40s PLAN"
 
@@ -42,10 +40,10 @@ print(dicom_directory_image.header['DimSize'])
 # dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR.mhd")
 
 
-xdr_file_image.resample([3,3,3])
-xdr_file_image.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized.mhd")
+xdr_file_image.resample([4,4,4])
+xdr_file_image.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized.xdr")
 
-dicom_directory_image.resample([3,3,3])
+dicom_directory_image.resample([4,4,4])
 print(dicom_directory_image.imdata.shape)
 print(dicom_directory_image.header['ElementSpacing'])
 print(dicom_directory_image.header['Offset'])
@@ -57,7 +55,7 @@ print(dicom_directory_image.header['DimSize'])
 
 
 
-dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR_RESIZED.mhd")
+dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR_RESIZED.xdr")
 
 
 

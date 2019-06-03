@@ -1,4 +1,4 @@
-import ctypes,os,configparser,math,image
+import ctypes,os,configparser,image
 from os import path
 from .types import *
 from .ctypes_helpers import *
@@ -173,7 +173,7 @@ class Engine():
 
 		# self.__gpumcd_object__.get_available_vram(0) #FIXME deze boyo geeft error...
 
-		max_streams = math.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox()))
+		max_streams = np.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox()))
 		self.num_parallel_streams = min(max_streams,3)
 		# self.num_parallel_streams = 1
 

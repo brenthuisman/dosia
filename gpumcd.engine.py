@@ -1,4 +1,4 @@
-import ctypes,numpy as np,os,math,configparser,argparse
+import ctypes,numpy as np,os,configparser,argparse
 import gpumcd
 from os import path
 import image
@@ -94,7 +94,7 @@ Engine = gpumcd.Gpumcd()
 
 print('libgpumcd loaded, starting gpumcd init...')
 
-max_streams = math.floor(Engine.get_available_vram(0)/Engine.estimate_vram_consumption(nvox))
+max_streams = np.floor(Engine.get_available_vram(0)/Engine.estimate_vram_consumption(nvox))
 n_streams = min(max_streams,3)
 # print(n_streams)
 # quit()
