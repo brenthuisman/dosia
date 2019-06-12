@@ -1,59 +1,85 @@
-import sys,image,numpy as np
+import image,numpy as np,pydicom,glob,collections
+from os import path
 
-dicom_directory = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals\2. HalsSupracl + C   3.0  B40s PLAN"
+##############################################################################
 
-dicom_file = r"D:\postdoc\analyses\gpumcd_python\dicom\stijn\IMRTa\Monaco\F180307A_MonacoRecalc_Dose.dcm"
+class pydicom_object():
+	'''
+	The purpose of this class is to help understand what type of dicomfile is being read. Inputs can be files or dirs. methods include modality of the file (CT, RTPLAN or RTDOSE), SOPInstanceUID in order to link with other dicom objects.
 
-xdr_file = r"D:\postdoc\analyses\gpumcd_python\med.xdr"
+	Plan and dose are linked through sopid. plan, dose and ct are linked through studyid.
+	'''
+	def __init__(self,fname):
+		if path.isdir(fname):
+			#pydicom doesnt read dicom dirs, so lets take the first file
+			fname = glob.glob(path.join (fname,'*'))[0]
+		if not path.isfile(fname):
+			IOError("You provided a filename or directoryname which does not exist!")
+		self.filename = fname
+		self.data = pydicom.dcmread(fname,force=True)
+		# print(dir(self.data))
+		self.modality = self.data.Modality
+		self.sopid = None
+		self.studyid = self.data.StudyInstanceUID
+		if self.modality not in ['CT','RTDOSE','RTPLAN']:
+			NotImplementedError("You provided a file that is not a CT, RTDOSE or RTPLAN!")
+			#TODO Struct?
+		elif self.modality == "CT":
+			self.ct={}
+			self.ct['PatientPosition']=self.data.PatientPosition
+			self.ct['RescaleIntercept']=self.data.RescaleIntercept
+			self.ct['RescaleSlope']=self.data.RescaleSlope
+			self.ct['PatientPosition']=self.data.PatientPosition
+		elif self.modality == "RTDOSE":
+			self.sopid = self.data.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
+		elif self.modality == "RTPLAN":
+			self.sopid = self.data.SOPInstanceUID
 
-dicom_directory_image = image.image(dicom_directory)
-# dicom_file_image = image.image(dicom_file)
-xdr_file_image = image.image(xdr_file)
+##############################################################################
 
-print(dicom_directory_image.imdata.shape)
-print(dicom_directory_image.header['ElementSpacing'])
-print(dicom_directory_image.header['Offset'])
-print(dicom_directory_image.header['NDims'])
-print(dicom_directory_image.header['DimSize'])
+casedir = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
-# print(dicom_file_image.header['ElementSpacing'])
-# print(dicom_file_image.header['Offset'])
-# print(dicom_file_image.header['NDims'])
-# print(dicom_file_image.header['DimSize'])
+ct_dirs = glob.glob(path.join(casedir,"*PLAN"))
+upi_dirs = glob.glob(path.join(casedir,"*UPI*"))
 
-# print(xdr_file_image.header['ElementSpacing'])
-# print(xdr_file_image.header['Offset'])
-# print(xdr_file_image.header['NDims'])
-# print(xdr_file_image.header['DimSize'])
+studies = collections.defaultdict(dict)
 
+for ct_dir in ct_dirs:
+	a = pydicom_object(ct_dir)
+	if a.modality == 'CT':
+		studies[a.studyid]['ct'] = ct_dir
+	else:
+		IOError("Expected CT image, but",a.modality,"was found.")
 
+for upi_dir in upi_dirs:
+	files_in_upi = glob.glob(path.join(upi_dir,'*'))
+	for f in files_in_upi:
+		a = pydicom_object(f)
+		try:
+			studies[a.studyid][a.sopid]
+		except:
+			studies[a.studyid][a.sopid]={}
+		if a.modality == "RTDOSE":
+			studies[a.studyid][a.sopid]['dose'] = f
+		elif a.modality == "RTPLAN":
+			studies[a.studyid][a.sopid]['plan'] = f
+		else:
+			IOError("Expected RTDOSE or RTPLAN, but",a.modality,"was found.")
 
+print(studies)
 
-
-
-
-# dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR.mhd")
-
-xdr_file_image2 = xdr_file_image.copy()
-xdr_file_image2.resample([4,4,4],allowcrop=True)
-xdr_file_image2.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized2.xdr")
-
-xdr_file_image.resample([4,4,4])
-xdr_file_image.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized.xdr")
-
-dicom_directory_image.resample([4,4,4])
-print(dicom_directory_image.imdata.shape)
-print(dicom_directory_image.header['ElementSpacing'])
-print(dicom_directory_image.header['Offset'])
-print(dicom_directory_image.header['NDims'])
-print(dicom_directory_image.header['DimSize'])
-
-
-# dicom_directory_image.imdata = dicom_directory_image.imdata.reshape(dicom_directory_image.imdata.shape[::-1])
+# convert ct dicom to xdr
+a = image.image(ct_dirs[0])
+a.saveas(r"D:\postdoc\analyses\gpumcd_python\20181101_CT.xdr")
 
 
 
-dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR_RESIZED.xdr")
+
+
+
+
+
+
 
 
 
@@ -64,25 +90,7 @@ dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR_RESI
 quit()
 
 
-
-
-
-
-
-
-# fname = sys.argv[-1]
-
-# data = pydicom.dcmread(fname,force=True)
-
-# print(dir(data))
-
-
-try:
-	print (data.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID) # if fname is a dose, this value corresponds to the plan's SOPInstanceUID
-	print("dis nen doos")
-except:
-	print (data.SOPInstanceUID)
-	print("ne planneke")
+##############################################################################
 
 #print(dir(data.BeamSequence[0].ControlPointSequence[0]))
 
