@@ -30,15 +30,13 @@ print(dicom_directory_image.header['DimSize'])
 
 
 
-# dicom_directory_image.imdata = ndimage.zoom(dicom_directory_image.imdata,0.3,order=1)
-
-# dicom_directory_image.imdata = dicom_directory_image.imdata.reshape(dicom_directory_image.imdata.shape[::-1])
-
-
 
 
 # dicom_directory_image.saveas(r"D:\postdoc\analyses\gpumcd_python\TESTDCMDIR.mhd")
 
+xdr_file_image2 = xdr_file_image.copy()
+xdr_file_image2.resample([4,4,4],allowcrop=True)
+xdr_file_image2.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized2.xdr")
 
 xdr_file_image.resample([4,4,4])
 xdr_file_image.saveas(r"D:\postdoc\analyses\gpumcd_python\xdrresized.xdr")
