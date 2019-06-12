@@ -35,36 +35,42 @@ class pydicom_object():
 		elif self.modality == "RTPLAN":
 			self.sopid = self.data.SOPInstanceUID
 
+def pydicom_casedir(dname):
+	ct_dirs = glob.glob(path.join(dname,"*PLAN"))
+	upi_dirs = glob.glob(path.join(dname,"*UPI*"))
+
+	studies = collections.defaultdict(dict)
+
+	for ct_dir in ct_dirs:
+		a = pydicom_object(ct_dir)
+		if a.modality == 'CT':
+			studies[a.studyid]['ct'] = ct_dir
+		else:
+			IOError("Expected CT image, but",a.modality,"was found.")
+
+	for upi_dir in upi_dirs:
+		files_in_upi = glob.glob(path.join(upi_dir,'*'))
+		for f in files_in_upi:
+			a = pydicom_object(f)
+			try:
+				studies[a.studyid][a.sopid]
+			except:
+				studies[a.studyid][a.sopid]={}
+			if a.modality == "RTDOSE":
+				studies[a.studyid][a.sopid]['dose'] = f
+			elif a.modality == "RTPLAN":
+				studies[a.studyid][a.sopid]['plan'] = f
+			else:
+				IOError("Expected RTDOSE or RTPLAN, but",a.modality,"was found.")
+
+	return studies
+
+
 ##############################################################################
 
 casedir = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
-ct_dirs = glob.glob(path.join(casedir,"*PLAN"))
-upi_dirs = glob.glob(path.join(casedir,"*UPI*"))
-
-studies = collections.defaultdict(dict)
-
-for ct_dir in ct_dirs:
-	a = pydicom_object(ct_dir)
-	if a.modality == 'CT':
-		studies[a.studyid]['ct'] = ct_dir
-	else:
-		IOError("Expected CT image, but",a.modality,"was found.")
-
-for upi_dir in upi_dirs:
-	files_in_upi = glob.glob(path.join(upi_dir,'*'))
-	for f in files_in_upi:
-		a = pydicom_object(f)
-		try:
-			studies[a.studyid][a.sopid]
-		except:
-			studies[a.studyid][a.sopid]={}
-		if a.modality == "RTDOSE":
-			studies[a.studyid][a.sopid]['dose'] = f
-		elif a.modality == "RTPLAN":
-			studies[a.studyid][a.sopid]['plan'] = f
-		else:
-			IOError("Expected RTDOSE or RTPLAN, but",a.modality,"was found.")
+studies = pydicom_casedir(casedir)
 
 print(studies)
 
