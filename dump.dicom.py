@@ -1,5 +1,6 @@
 import image,numpy as np,pydicom,glob,collections
 from os import path
+from os import makedirs
 
 ##############################################################################
 
@@ -63,6 +64,7 @@ def pydicom_casedir(dname):
 			else:
 				IOError("Expected RTDOSE or RTPLAN, but",a.modality,"was found.")
 
+	# todo: return studies[list(studies.keys())[0]] if len(studies)==1
 	return studies
 
 
@@ -72,13 +74,23 @@ casedir = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
 studies = pydicom_casedir(casedir)
 
-print(studies)
-
-# convert ct dicom to xdr
-a = image.image(ct_dirs[0])
-a.saveas(r"D:\postdoc\analyses\gpumcd_python\20181101_CT.xdr")
-
-
+for studyid,v in studies.items():
+	ct=image.image(v['ct'])
+	ct.resample([3,3,3])
+	ct.saveas(path.join(casedir,"xdr","ct.xdr"))
+	for sopid,d in v.items():
+		if isinstance(d,dict):
+			# try:
+			# 	d['plan']
+			# except:
+			# 	print('geen plan?')
+			# try:
+			b=image.image(d['dose'])
+			b.saveas(path.join(casedir,"xdr",sopid,"dose.xdr"))
+			b.crop_as(ct)
+			b.saveas(path.join(casedir,"xdr",sopid,"dose_ctgrid.xdr"))
+			# except:
+			# 	print('geen dose?')
 
 
 
