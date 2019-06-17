@@ -1,4 +1,4 @@
-import ctypes,os,configparser,image
+import ctypes,os,configparser,image,dicom
 from os import path
 from .types import *
 from .ctypes_helpers import *
@@ -108,7 +108,7 @@ class Settings():
 
 
 class CT():
-	def __init__(self,settings,ct_image,intercept=0,slope=1):
+	def __init__(self,settings,ct_image): #,intercept=0,slope=1):
 		assert(isinstance(ct_image,image.image))
 		assert(isinstance(settings,Settings))
 
@@ -128,7 +128,7 @@ class CT():
 				dens2mat_table[1].append(line.split()[1])
 
 		dens=ct_image.copy()
-		dens.ct_to_hu(intercept,slope)
+		# dens.ct_to_hu(intercept,slope)
 
 		if path.isdir(settings.debug['output']):
 			dens.saveas(path.join(settings.debug['output'],'ct_as_hu.xdr'))
@@ -145,8 +145,129 @@ class CT():
 			med.saveas(path.join(settings.debug['output'],'med.xdr'))
 
 
+class Accelerator():
+	def __init__(self,sett,typestring,energy):
+		assert(isinstance(sett,Settings))
+		assert(isinstance(typestring,str))
+		self.type = None
+		self.energy = None #is in controlpoint
+		self.filter = None #unknown
+		self.leafs_per_bank = None
+		self.machfile = None
+		if 'MLC160' in typestring or 'M160' in typestring:
+			self.type = 'Agility'
+			self.energy = energy
+			self.filter = True #default
+			self.leafs_per_bank = 80
+		elif 'MLC80' in typestring or 'M80' in typestring:
+			self.type = 'MLCi80'
+			self.energy = energy
+			self.filter = True
+			self.leafs_per_bank = 40
+		else:
+			ImportError("Unknown type of TreatmentMachineName found:"+typstring)
+
+		#FIXME set machfile, for which we need to know energy and filter.
+		#	sett.gpumcd_machines
+	def __str__(self):
+		return f"Accelerator is of type {self.type} with energy {self.energy}MV."
+
+
+
 
 class Rtplan():
+	def __init__(self,sett,rtplan_dicom):
+		assert(isinstance(sett,Settings))
+		assert(isinstance(rtplan_dicom,dicom.pydicom_object))
+
+		self.accelerator = Accelerator(sett,rtplan_dicom.data.BeamSequence[0].TreatmentMachineName,rtplan_dicom.data.BeamSequence[0].ControlPointSequence[0].NominalBeamEnergy)
+
+		if sett.debug['verbose']>0:
+			print(self.accelerator)
+
+		beamweights = []
+		for b in range(rtplan_dicom.data.FractionGroupSequence[0].NumberOfBeams):
+			#theres only 1 fractiongroup
+			beamweights.append(float(rtplan_dicom.data.FractionGroupSequence[0].ReferencedBeamSequence[b].BeamMeterset))
+
+		self.beams=[] #for each beam, controlpoints
+		for i,bw in enumerate(beamweights):
+			#total weight of cps in beam is 1
+			# convert cumulative weights to relative weights and then absolute weights using bw.
+			nbcps = rtplan_dicom.data.BeamSequence[i].NumberOfControlPoints
+			self.beams.append(make_c_array(ControlPoint,nbcps))
+			for cpi in range(nbcps):
+				# python has no references, so keep this in mind:
+				# from: rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi]
+				# to: self.beams[i][cpi]
+
+				self.beams[i][cpi] = ControlPoint()
+
+				self.beams[i][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(0) # ASYMX
+				self.beams[i][cpi].collimator.parallelJaw.orientation = ModifierOrientation() # default = MLCi80 = None
+				if self.accelerator.type != "MLCi80":
+					self.beams[i][cpi].collimator.parallelJaw.orientation = ModifierOrientation(1) # ASYMY
+
+				self.beams[i][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
+
+				self.beams[i][cpi].beamInfo.relativeWeight = rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].CumulativeMetersetWeight * bw
+				self.beams[i][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].IsocenterPosition)
+				self.beams[i][cpi].beamInfo.gantryAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].GantryAngle)
+				self.beams[i][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].TableTopEccentricAngle)
+				self.beams[i][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDeviceAngle)
+
+				# Controlpoints are 1-indexed in dicom
+				for l in range(1,self.accelerator.leafs_per_bank+1):
+					print(self.beams[i][cpi].collimator.mlc)
+					# rightleaves: eerste helft.
+					self.beams[i][cpi].collimator.mlc.rightLeaves_data[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l])
+					#leftleaves : tweede helft.
+					self.beams[i][cpi].collimator.mlc.leftLeaves_data[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l+self.accelerator.leafs_per_bank])
+
+
+				# #check: do we have ASYMX? If yes, easy. If now, then
+				# if self.beams[i][cpi].collimator.mlc.perpendicularJaw.orientation.value != -1:
+				# 	#geen ASYMX, dus min van elke bank nemen voor fieldmin/max
+				# 	self.beams[i][cpi].collimator.mlc.perpendicularJaw.j1 =
+				# 	self.beams[i][cpi].collimator.mlc.perpendicularJaw.j2 =
+
+
+				# self.beams[i][cpi].beamInfo.fieldMin =
+				# self.beams[i][cpi].beamInfo.fieldMax =
+
+				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j1 =
+				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j2 =
+
+
+
+
+# for cp in data.BeamSequence[0].ControlPointSequence:
+# 	weights_beam_0.append( cp.CumulativeMetersetWeight )
+
+# for i in range(len(weights_beam_0)):
+# 	print(i, '\t', weights_beam_0[i], '\t', end="")
+# 	try:
+# 		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
+# 		print(weights_beam_0[i])
+# 	except:
+# 		pass
+
+
+# was dis?:
+#for beam in data.BeamSequence:
+	#i = 0
+	#for cp in beam.ControlPointSequence:
+		##print(i,cp.CumulativeMetersetWeight)
+		#weights_beam_0.append( cp.CumulativeMetersetWeight )
+		#i+=1
+
+
+
+
+	#def setcp(self,index,)
+
+
+
 	# machine:
 	#   beamsequence>beam1>TreatmentMachineName = NKIAgility6MV
 	# OR

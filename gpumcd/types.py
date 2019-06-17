@@ -28,9 +28,12 @@ class Float3(ctypes.Structure):
 
 class Pair(ctypes.Structure):
 	_fields_ = [("first", ctypes.c_float), ("second", ctypes.c_float)]
-	def __init__(self,first=0,second=0):
+	def __init__(self,first,second=None):
 		self.first=first
-		self.second=second
+		if second == None:
+			self.second=first
+		else:
+			self.second=second
 
 class PhysicsSettings(ctypes.Structure):
 	_fields_ = [("photonTransportCutoff", ctypes.c_float), ("electronTransportCutoff", ctypes.c_float), ("inputMaxStepLength", ctypes.c_float), ("magneticField", Float3), ("referenceMedium", ctypes.c_int), ("useElectronInAirSpeedup", ctypes.c_int), ("electronInAirSpeedupDensityThreshold", ctypes.c_float)]
@@ -127,10 +130,10 @@ class JawInformation(ctypes.Structure):
 class MlcInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("numberLeaves", ctypes.c_int), ("leftLeaves", ctypes.POINTER(Pair)), ("rightLeaves", ctypes.POINTER(Pair))]
 	def __init__(self,numberLeaves):
-		elems = (Pair * numberLeaves)()
-		elems2 = (Pair * numberLeaves)()
-		self.leftLeaves = ctypes.cast(elems,ctypes.POINTER(Pair))
-		self.rightLeaves = ctypes.cast(elems2,ctypes.POINTER(Pair))
+		self.leftLeaves_data = (Pair * numberLeaves)()
+		self.rightLeaves_data = (Pair * numberLeaves)()
+		self.leftLeaves = ctypes.cast(self.leftLeaves_data,ctypes.POINTER(Pair))
+		self.rightLeaves = ctypes.cast(self.rightLeaves_data,ctypes.POINTER(Pair))
 		self.numberLeaves = numberLeaves
 
 class ModifierInformation(ctypes.Structure):
