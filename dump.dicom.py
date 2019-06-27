@@ -1,33 +1,29 @@
 import image,numpy as np,dicom,glob,collections
-from os import path
-from os import makedirs
+from os import path, makedirs
 import gpumcd
 
 casedir = r"D:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
 sett = gpumcd.Settings("D:\\postdoc\\gpumcd_data")
 sett.debug['verbose']=3 #wanna see errythang
+sett.debug['verbose']=3 #wanna see errythang
 
 studies = dicom.pydicom_casedir(casedir)
 
 for studyid,v in studies.items():
-	# v['ct'].resample([3,3,3])
-	# v['ct'].saveas(path.join(casedir,"xdr","ct.xdr"))
+	print ('brent',studyid,'\n')
+	v['ct'].resample([3,3,3])
+	v['ct'].saveas(path.join(casedir,"xdr","ct.xdr"))
 	for sopid,d in v.items():
 		if isinstance(d,dict):
-			# d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose.xdr"))
-			# d['dose'].crop_as(v['ct'])
-			# d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose_ctgrid.xdr"))
+			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose.xdr"))
+			d['dose'].crop_as(v['ct'])
+			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose_ctgrid.xdr"))
 
 			p=gpumcd.Rtplan(sett, d['plan'])
 
-			print(right)
-			print(p.beams[0].controlpoints[0].collimator.mlc.rightLeaves_data)
-			print(left)
-			print(p.beams[0].controlpoints[0].collimator.mlc.leftLeaves_data)
-
-
-
+			for beam in p.beams:
+				gpumcd.Engine(sett,v['ct'],)
 
 
 

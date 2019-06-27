@@ -10,8 +10,9 @@ print(sett.planSettings.goalSfom)
 casedir = "D:\\postdoc\\analyses\\gpumcd_python"
 
 ct_image=image.image(path.join(casedir,'ct.xdr'))
+ct_image.ct_to_hu(1000,1)
 
-ct = gpumcd.CT(sett,ct_image,-1000,1) #for dicoms, dont set intercept,slope.
+ct = gpumcd.CT(sett,ct_image) #for dicoms, dont set intercept,slope.
 
 
 
@@ -36,7 +37,7 @@ BeamFrames = gpumcd.make_c_array(gpumcd.BeamFrame,2)
 BeamFrames[0]=gpumcd.BeamFrame(1)
 BeamFrames[0].beamInfo[0].relativeWeight = 50
 BeamFrames[0].beamInfo[0].isoCenter.x=0
-BeamFrames[0].beamInfo[0].isoCenter.y=-20#its below the back, so lets pull it up inside the patient
+BeamFrames[0].beamInfo[0].isoCenter.y=-20 #its below the back, so lets pull it up inside the patient
 BeamFrames[0].beamInfo[0].isoCenter.z=0
 BeamFrames[0].beamInfo[0].collimatorAngle.first=0
 BeamFrames[0].beamInfo[0].collimatorAngle.second=0

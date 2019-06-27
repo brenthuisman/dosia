@@ -109,6 +109,9 @@ class Settings():
 
 class CT():
 	def __init__(self,settings,ct_image): #,intercept=0,slope=1):
+		'''
+		The supplied image is assumed to have its voxels set to HU.
+		'''
 		assert(isinstance(ct_image,image.image))
 		assert(isinstance(settings,Settings))
 
@@ -177,6 +180,13 @@ class Accelerator():
 
 class Rtplan():
 	def __init__(self,sett,rtplan_dicom):
+		'''
+		TODO:
+		* Setup ASYMX/Y correctly
+		* Use BeamLimitingDeviceSequence, do not assume fixed order in array.
+		* Fix cumulative -> absolute weight
+		* Add dynamic/fixed cp (differen first/second for Pairs)
+		'''
 		assert(isinstance(sett,Settings))
 		assert(isinstance(rtplan_dicom,dicom.pydicom_object))
 
@@ -200,7 +210,7 @@ class Rtplan():
 				# python has no references, so keep this in mind:
 				# from: rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi]
 				# to: self.beams[i][cpi]
-
+				# print("cpi",cpi)
 				self.beams[i][cpi] = ControlPoint()
 
 				self.beams[i][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(0) # ASYMX
@@ -211,19 +221,20 @@ class Rtplan():
 				self.beams[i][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
 
 				self.beams[i][cpi].beamInfo.relativeWeight = rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].CumulativeMetersetWeight * bw
-				self.beams[i][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].IsocenterPosition)
+				#isoc only in first cp
+				self.beams[i][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].IsocenterPosition)
 				self.beams[i][cpi].beamInfo.gantryAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].GantryAngle)
-				self.beams[i][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].TableTopEccentricAngle)
-				self.beams[i][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDeviceAngle)
+				#TableTopEccentricAngle only in first cp
+				self.beams[i][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].TableTopEccentricAngle)
+				#BeamLimitingDeviceAngle only in first cp
+				self.beams[i][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].BeamLimitingDeviceAngle)
 
-				# Controlpoints are 1-indexed in dicom
-				for l in range(1,self.accelerator.leafs_per_bank+1):
-					print(self.beams[i][cpi].collimator.mlc)
+				for l in range(self.accelerator.leafs_per_bank):
+					# print(i,cpi,l)
 					# rightleaves: eerste helft.
-					self.beams[i][cpi].collimator.mlc.rightLeaves_data[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l])
+					self.beams[i][cpi].collimator.mlc.rightLeaves[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l])
 					#leftleaves : tweede helft.
-					self.beams[i][cpi].collimator.mlc.leftLeaves_data[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l+self.accelerator.leafs_per_bank])
-
+					self.beams[i][cpi].collimator.mlc.leftLeaves[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l+self.accelerator.leafs_per_bank])
 
 				# #check: do we have ASYMX? If yes, easy. If now, then
 				# if self.beams[i][cpi].collimator.mlc.perpendicularJaw.orientation.value != -1:
@@ -237,6 +248,8 @@ class Rtplan():
 
 				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j1 =
 				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j2 =
+
+				#
 
 
 

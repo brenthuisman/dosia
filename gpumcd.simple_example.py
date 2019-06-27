@@ -43,26 +43,22 @@ phantom.phantomCorner.z = -5.0
 
 nvox = phantom.numVoxels.x*phantom.numVoxels.y*phantom.numVoxels.z
 for i in range(nvox):
-	phantom.massDensityArray_data[i]=1
-	phantom.mediumIndexArray_data[i]=0
+	phantom.massDensityArray[i]=1
+	phantom.mediumIndexArray[i]=0
 
 lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
 Engine = gpumcd.__gpumcd__("D:/postdoc/gpumcd_data/dll")
-#libgpumcd = ctypes.CDLL(path.join(rootdir,"libgpumcd.dll"))
 
 print('libgpumcd loaded, starting gpumcd init...')
 
+print("Engine.get_available_vram(0)",Engine.get_available_vram(0))
+print("Engine.estimate_vram_consumption(nvox)",Engine.estimate_vram_consumption(nvox))
+
 max_streams = np.floor(Engine.get_available_vram(0)/Engine.estimate_vram_consumption(nvox))
 n_streams = min(max_streams,3)
-# print(n_streams)
-# quit()
-
-## TODO libgpumcd.initGpumcd.argtypes = ([c_char_p, c_int, c_char_p] etc etc
-
-print(type(ctypes.byref(lasterror)))
 
 retval = Engine.init(
 	0,

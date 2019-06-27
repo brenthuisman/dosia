@@ -81,21 +81,16 @@ class Phantom(ctypes.Structure):
 			if dens.nvox() != med.nvox():
 				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
 
-			# self.massDensityArray = dens.get_ctypes_pointer_to_data()
-			# self.mediumIndexArray = med.get_ctypes_pointer_to_data()
-
 			nVoxels =  med.header['DimSize'][0]* med.header['DimSize'][1]* med.header['DimSize'][2]
-			self.massDensityArray_data = (ctypes.c_float * nVoxels)() #needs to be accessible because pointer does not refer to data outside this struct.
-			self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
+			self.__massDensityArray_data = (ctypes.c_float * nVoxels)()
+			self.__mediumIndexArray_data = (ctypes.c_float * nVoxels)()
 
 			# put data in right order, as if saving to disk.
 			dens_imdata = np.asarray(dens.imdata.swapaxes(0, dens.header['NDims'] - 1),order='C').flatten()
 			med_imdata = np.asarray(med.imdata.swapaxes(0, med.header['NDims'] - 1),order='C').flatten()
 			for i,(d,m) in enumerate(zip( dens_imdata,med_imdata ) ):
-				self.massDensityArray_data[i] = d
-				self.mediumIndexArray_data[i] = m
-			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
-			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
+				self.__massDensityArray_data[i] = d
+				self.__mediumIndexArray_data[i] = m
 
 			self.numVoxels.x = med.header['DimSize'][0]
 			self.numVoxels.y = med.header['DimSize'][1]
@@ -114,12 +109,14 @@ class Phantom(ctypes.Structure):
 			"Default" constructor, reserving int values that you provide in massDensityArray_data and mediumIndexArray_data. Rest is up to you!
 			'''
 			nVoxels=args[0]
-			self.massDensityArray_data = (ctypes.c_float * nVoxels)() #needs to be accessible because pointer does not refer to data outside this struct.
-			self.mediumIndexArray_data = (ctypes.c_float * nVoxels)()
-			self.massDensityArray = ctypes.cast(self.massDensityArray_data,ctypes.POINTER(ctypes.c_float))
-			self.mediumIndexArray = ctypes.cast(self.mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
+			#these members musnt be garbage collected away after __init__, but otherwise you should use the pointer
+			self.__massDensityArray_data = (ctypes.c_float * nVoxels)()
+			self.__mediumIndexArray_data = (ctypes.c_float * nVoxels)()
 		else:
 			raise IOError("Could not instantiate phantom, no valid arguments provided.")
+
+		self.massDensityArray = ctypes.cast(self.__massDensityArray_data,ctypes.POINTER(ctypes.c_float))
+		self.mediumIndexArray = ctypes.cast(self.__mediumIndexArray_data,ctypes.POINTER(ctypes.c_float))
 
 	def nvox(self):
 		return self.numVoxels.x*self.numVoxels.y*self.numVoxels.z
@@ -130,10 +127,10 @@ class JawInformation(ctypes.Structure):
 class MlcInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("numberLeaves", ctypes.c_int), ("leftLeaves", ctypes.POINTER(Pair)), ("rightLeaves", ctypes.POINTER(Pair))]
 	def __init__(self,numberLeaves):
-		self.leftLeaves_data = (Pair * numberLeaves)()
-		self.rightLeaves_data = (Pair * numberLeaves)()
-		self.leftLeaves = ctypes.cast(self.leftLeaves_data,ctypes.POINTER(Pair))
-		self.rightLeaves = ctypes.cast(self.rightLeaves_data,ctypes.POINTER(Pair))
+		self.__leftLeaves_data = (Pair * numberLeaves)()
+		self.__rightLeaves_data = (Pair * numberLeaves)()
+		self.leftLeaves = ctypes.cast(self.__leftLeaves_data,ctypes.POINTER(Pair))
+		self.rightLeaves = ctypes.cast(self.__rightLeaves_data,ctypes.POINTER(Pair))
 		self.numberLeaves = numberLeaves
 
 class ModifierInformation(ctypes.Structure):
@@ -148,6 +145,6 @@ class ControlPoint(ctypes.Structure):
 class BeamFrame(ctypes.Structure):
 	_fields_ = [("numberbeamInfo", ctypes.c_int), ("beamInfo", ctypes.POINTER(BeamInformation))]
 	def __init__(self,numberbeamInfo):
-		elems = (BeamInformation * numberbeamInfo)()
-		self.beamInfo = ctypes.cast(elems,ctypes.POINTER(BeamInformation))
+		self.__beamInfo_data = (BeamInformation * numberbeamInfo)()
+		self.beamInfo = ctypes.cast(self.__beamInfo_data,ctypes.POINTER(BeamInformation))
 		self.numberbeamInfo = numberbeamInfo
