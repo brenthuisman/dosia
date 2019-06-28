@@ -15,7 +15,6 @@ class pydicom_object():
 			IOError("You provided a filename or directoryname which does not exist!")
 		self.filename = fname
 		self.data = pydicom.dcmread(fname,force=True)
-		# print(dir(self.data))
 		self.modality = self.data.Modality
 		self.sopid = None
 		self.studyid = self.data.StudyInstanceUID
