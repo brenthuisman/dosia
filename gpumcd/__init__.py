@@ -182,8 +182,7 @@ class Rtplan():
 	def __init__(self,sett,rtplan_dicom):
 		'''
 		TODO:
-		* Setup ASYMX/Y correctly
-		* Use BeamLimitingDeviceSequence, do not assume fixed order in array.
+		* convert units pydicom (mm) to gpumcd (cm)
 		* Fix cumulative -> absolute weight
 		* Add dynamic/fixed cp (differen first/second for Pairs)
 		'''
@@ -201,104 +200,131 @@ class Rtplan():
 			beamweights.append(float(rtplan_dicom.data.FractionGroupSequence[0].ReferencedBeamSequence[b].BeamMeterset))
 
 		self.beams=[] #for each beam, controlpoints
-		for i,bw in enumerate(beamweights):
+		for bi,bw in enumerate(beamweights):
 			#total weight of cps in beam is 1
 			# convert cumulative weights to relative weights and then absolute weights using bw.
-			nbcps = rtplan_dicom.data.BeamSequence[i].NumberOfControlPoints
+			nbcps = rtplan_dicom.data.BeamSequence[bi].NumberOfControlPoints
+
+			mlcx_index = None
+			asymy_index = None
+			asymx_index = None
+			for bld_index in range(len(rtplan_dicom.data.BeamSequence[bi].BeamLimitingDeviceSequence)):
+				thistype = rtplan_dicom.data.BeamSequence[bi].BeamLimitingDeviceSequence[bld_index].RTBeamLimitingDeviceType
+				if "MLCX" in thistype:
+					mlcx_index = bld_index
+				if "ASYMY" in thistype:
+					asymy_index = bld_index
+				if "ASYMX" in thistype:
+					asymx_index = bld_index
+
 			self.beams.append(make_c_array(ControlPoint,nbcps))
 			for cpi in range(nbcps):
 				# python has no references, so keep this in mind:
-				# from: rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi]
-				# to: self.beams[i][cpi]
-				# print("cpi",cpi)
-				self.beams[i][cpi] = ControlPoint()
+				# from: rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi]
+				# to: self.beams[bi][cpi]
 
-				self.beams[i][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(0) # ASYMX
-				self.beams[i][cpi].collimator.parallelJaw.orientation = ModifierOrientation() # default = MLCi80 = None
-				if self.accelerator.type != "MLCi80":
-					self.beams[i][cpi].collimator.parallelJaw.orientation = ModifierOrientation(1) # ASYMY
+				self.beams[bi][cpi] = ControlPoint()
 
-				self.beams[i][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
+				self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1) # ASYMY
+				print(f"init asymy {self.beams[bi][cpi].collimator.perpendicularJaw.orientation.value}")
 
-				self.beams[i][cpi].beamInfo.relativeWeight = rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].CumulativeMetersetWeight * bw
+				if self.accelerator.type == "Agility":
+					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0) # agility heeft ASYMX/parallelJaw
+				else:
+					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(-1) # MLCi80 heeft geen ASYMX/parallelJaw
+
+				self.beams[bi][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
+
+				# Now, let's see what our dicom gives us about this beam
+
+				self.beams[bi][cpi].beamInfo.relativeWeight = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].CumulativeMetersetWeight * bw
 				#isoc only in first cp
-				self.beams[i][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].IsocenterPosition)
-				self.beams[i][cpi].beamInfo.gantryAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].GantryAngle)
+				self.beams[bi][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition)
+				self.beams[bi][cpi].beamInfo.gantryAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].GantryAngle)
 				#TableTopEccentricAngle only in first cp
-				self.beams[i][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].TableTopEccentricAngle)
+				self.beams[bi][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle)
 				#BeamLimitingDeviceAngle only in first cp
-				self.beams[i][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[0].BeamLimitingDeviceAngle)
+				self.beams[bi][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle)
 
+				# MLCX
+				mlcx_r = []
+				mlcx_l = []
 				for l in range(self.accelerator.leafs_per_bank):
-					# print(i,cpi,l)
 					# rightleaves: eerste helft.
-					self.beams[i][cpi].collimator.mlc.rightLeaves[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l])
-					#leftleaves : tweede helft.
-					self.beams[i][cpi].collimator.mlc.leftLeaves[l] = Pair(rtplan_dicom.data.BeamSequence[i].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[-1].LeafJawPositions[l+self.accelerator.leafs_per_bank])
+					rval = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]
+					lval = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]
 
-				# #check: do we have ASYMX? If yes, easy. If now, then
-				# if self.beams[i][cpi].collimator.mlc.perpendicularJaw.orientation.value != -1:
-				# 	#geen ASYMX, dus min van elke bank nemen voor fieldmin/max
-				# 	self.beams[i][cpi].collimator.mlc.perpendicularJaw.j1 =
-				# 	self.beams[i][cpi].collimator.mlc.perpendicularJaw.j2 =
+					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval)
+					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval)
 
+					mlcx_r.append(rval)
+					mlcx_l.append(lval)
 
-				# self.beams[i][cpi].beamInfo.fieldMin =
-				# self.beams[i][cpi].beamInfo.fieldMax =
+				# prep for field extremeties
+				self.beams[bi][cpi].beamInfo.fieldMin = Pair()
+				self.beams[bi][cpi].beamInfo.fieldMax = Pair()
 
-				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j1 =
-				# self.beams[i][cpi].collimator.mlc.perpendicularJaw.j2 =
-
-				#
-
-
-
-
-# for cp in data.BeamSequence[0].ControlPointSequence:
-# 	weights_beam_0.append( cp.CumulativeMetersetWeight )
-
-# for i in range(len(weights_beam_0)):
-# 	print(i, '\t', weights_beam_0[i], '\t', end="")
-# 	try:
-# 		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
-# 		print(weights_beam_0[i])
-# 	except:
-# 		pass
+				#ASYM X
+				if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
+					#geen ASYMX, dus min van elke bank nemen voor fieldmin/max
+					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0])
+					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1])
+					#fieldmin/max
+					self.beams[bi][cpi].beamInfo.fieldMin.first = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]
+					self.beams[bi][cpi].beamInfo.fieldMax.first = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]
+					print(self.beams[bi][cpi].beamInfo.fieldMin.first)
+					print(self.beams[bi][cpi].beamInfo.fieldMax.first)
+				else:
+					pass
+					#if no ASYM X, then we must get extreme field borders from MLCX
+					self.beams[bi][cpi].beamInfo.fieldMin.first = min(mlcx_r)
+					self.beams[bi][cpi].beamInfo.fieldMax.first = max(mlcx_l)
 
 
-# was dis?:
-#for beam in data.BeamSequence:
-	#i = 0
-	#for cp in beam.ControlPointSequence:
-		##print(i,cp.CumulativeMetersetWeight)
-		#weights_beam_0.append( cp.CumulativeMetersetWeight )
-		#i+=1
+				# ASYM Y
+				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0])
+				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1])
 
 
 
+	# for cp in data.BeamSequence[0].ControlPointSequence:
+	# 	weights_beam_0.append( cp.CumulativeMetersetWeight )
 
-	#def setcp(self,index,)
+	# for i in range(len(weights_beam_0)):
+	# 	print(i, '\t', weights_beam_0[i], '\t', end="")
+	# 	try:
+	# 		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
+	# 		print(weights_beam_0[i])
+	# 	except:
+	# 		pass
 
 
+	# was dis?:
+	#for beam in data.BeamSequence:
+		#i = 0
+		#for cp in beam.ControlPointSequence:
+			##print(i,cp.CumulativeMetersetWeight)
+			#weights_beam_0.append( cp.CumulativeMetersetWeight )
+			#i+=1
 
-	# machine:
-	#   beamsequence>beam1>TreatmentMachineName = NKIAgility6MV
-	# OR
-	#   beamsequence>beam1>beamtype = static #meaning?
-	#   beamsequence>beam1>radiationtype = Photon
-	#   beamsequence>beam1>controlpointsequence>cp1>NominalBeamEnergy = 6
 
-	pass
+		# machine:
+		#   beamsequence>beam1>TreatmentMachineName = NKIAgility6MV
+		# OR
+		#   beamsequence>beam1>beamtype = static #meaning?
+		#   beamsequence>beam1>radiationtype = Photon
+		#   beamsequence>beam1>controlpointsequence>cp1>NominalBeamEnergy = 6
 
 
 class Engine():
 	'''
 	Works on Windows 64bit platform only.
 	'''
-	def __init__(self,settings,phantom,materials,machfile):
+	def __init__(self,settings,ct,machfile):
 		self.settings = settings
-		self.phantom = phantom
-		self.materials = materials
+		self.ct = ct
+		self.phantom = self.ct.phantom
+		self.materials = self.ct.materials
 		self.machfile = machfile
 
 		self.__gpumcd_object__ = __gpumcd__(self.settings.directories['gpumcd_dll'])

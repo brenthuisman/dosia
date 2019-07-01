@@ -9,8 +9,8 @@ class ModifierOrientation(ctypes.Structure):
     IECY = 1
 	'''
 	_fields_ = [("value", ctypes.c_int)]
-	def __init__(self,value=-1):
-		self.value = -1
+	def __init__(self,v=-1):
+		self.value = v
 
 class Int3(ctypes.Structure):
 	_fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("z", ctypes.c_int)]
@@ -28,7 +28,7 @@ class Float3(ctypes.Structure):
 
 class Pair(ctypes.Structure):
 	_fields_ = [("first", ctypes.c_float), ("second", ctypes.c_float)]
-	def __init__(self,first,second=None):
+	def __init__(self,first=0,second=None):
 		self.first=first
 		if second == None:
 			self.second=first
@@ -73,10 +73,10 @@ class Phantom(ctypes.Structure):
 			if dens.ndim() != 3 or med.ndim() is not 3:
 				raise IOError("Sorry, phantoms can only be instantiated with 3D images.")
 			if dens.imdata.dtype != 'float32':
-				print("dens is not float")
+				# print("dens is not float")
 				dens.imdata = dens.imdata.astype('<f4')
 			if med.imdata.dtype != 'float32':
-				print("med is not float")
+				# print("med is not float")
 				med.imdata = med.imdata.astype('<f4')
 			if dens.nvox() != med.nvox():
 				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")

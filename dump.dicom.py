@@ -11,10 +11,11 @@ sett.debug['verbose']=3 #wanna see errythang
 studies = dicom.pydicom_casedir(casedir)
 
 for studyid,v in studies.items():
-	print ('brent',studyid,'\n')
+	# print ('brent',studyid,'\n')
 	v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
 	v['ct'].resample([3,3,3])
 	v['ct'].saveas(path.join(casedir,"xdr","ct.xdr"))
+	v['ct_obj'] = gpumcd.CT(sett,v['ct'])
 	for sopid,d in v.items():
 		if isinstance(d,dict):
 			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose.xdr"))
@@ -24,7 +25,7 @@ for studyid,v in studies.items():
 			p=gpumcd.Rtplan(sett, d['plan'])
 
 			for beam in p.beams:
-				gpumcd.Engine(sett,v['ct'],)
+				gpumcd.Engine(sett,v['ct_obj'])
 
 
 
