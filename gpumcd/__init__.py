@@ -181,6 +181,15 @@ class Accelerator():
 class Rtplan():
 	def __init__(self,sett,rtplan_dicom):
 		'''
+		This class parses an RTplan dicom object into a series of segments that can be fed to GPUMCD.
+
+		Some terminology: a controlpoint is a snapshot of the accelerator state at a given point. A Segment is a 'unit' of irradiation associated with a beamweight. Typically this will be the space between two controlpoints: the beamweight is the difference between the cumulative meterset weight and the controlpoint-pair describes the initial and final state of the machine for this segment. Not that Pinnacle has it's own method of interpolation, as it cannot handle dynamic segments during dose calculation.
+
+		Typically, N controlpoints result in N-1 segments.
+
+		Although I could not find an explicit statement on the subject, all spatial distances are returned in units of mm by pydicom. Implicit proof:
+		https://pydicom.github.io/pydicom/stable/auto_examples/input_output/plot_read_rtplan.html
+
 		TODO:
 		* convert units pydicom (mm) to gpumcd (cm)
 		* Fix cumulative -> absolute weight
@@ -217,16 +226,15 @@ class Rtplan():
 				if "ASYMX" in thistype:
 					asymx_index = bld_index
 
-			self.beams.append(make_c_array(ControlPoint,nbcps))
+			self.beams.append(make_c_array(Segment,nbcps))
 			for cpi in range(nbcps):
 				# python has no references, so keep this in mind:
 				# from: rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi]
 				# to: self.beams[bi][cpi]
 
-				self.beams[bi][cpi] = ControlPoint()
+				self.beams[bi][cpi] = Segment()
 
 				self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1) # ASYMY
-				print(f"init asymy {self.beams[bi][cpi].collimator.perpendicularJaw.orientation.value}")
 
 				if self.accelerator.type == "Agility":
 					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0) # agility heeft ASYMX/parallelJaw
@@ -280,10 +288,21 @@ class Rtplan():
 					self.beams[bi][cpi].beamInfo.fieldMin.first = min(mlcx_r)
 					self.beams[bi][cpi].beamInfo.fieldMax.first = max(mlcx_l)
 
-
 				# ASYM Y
 				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0])
 				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1])
+
+		# At this point, self.beams has the rtplan as-is. For final use in GPUMCD, controlpoints must be converted to Segments and mm to cm.
+		self.controlpoints_to_segments()
+
+	def controlpoints_to_segments(self):
+		'''
+		This functions does two things:
+		* Convert N contrpoints to N-1 segments.
+		* Convert cumulative weights to absolute weights.
+		'''
+		self.final_beams =
+
 
 
 

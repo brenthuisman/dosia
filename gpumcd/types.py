@@ -139,10 +139,10 @@ class ModifierInformation(ctypes.Structure):
 class BeamInformation(ctypes.Structure):
 	_fields_ = [("relativeWeight", ctypes.c_float), ("isoCenter", Float3), ("gantryAngle", Pair), ("couchAngle", Pair), ("collimatorAngle", Pair), ("fieldMin", Pair), ("fieldMax", Pair)]
 
-class ControlPoint(ctypes.Structure):
+class Segment(ctypes.Structure):
 	_fields_ = [("collimator", ModifierInformation), ("beamInfo", BeamInformation)]
 
-class BeamFrame(ctypes.Structure):
+class Beamlet(ctypes.Structure):
 	_fields_ = [("numberbeamInfo", ctypes.c_int), ("beamInfo", ctypes.POINTER(BeamInformation))]
 	def __init__(self,numberbeamInfo):
 		self.__beamInfo_data = (BeamInformation * numberbeamInfo)()
