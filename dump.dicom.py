@@ -12,7 +12,7 @@ studies = dicom.pydicom_casedir(casedir)
 
 for studyid,v in studies.items():
 	# print ('brent',studyid,'\n')
-	v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
+	# v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
 	v['ct'].resample([3,3,3])
 	v['ct'].saveas(path.join(casedir,"xdr","ct.xdr"))
 	v['ct_obj'] = gpumcd.CT(sett,v['ct'])
@@ -24,8 +24,14 @@ for studyid,v in studies.items():
 
 			p=gpumcd.Rtplan(sett, d['plan'])
 
+			gpumcd_dose = v['ct'].copy()
 			for beam in p.beams:
-				gpumcd.Engine(sett,v['ct_obj'])
+				eng=gpumcd.Engine(sett,v['ct_obj'],p.accelerator.machfile)
+				eng.execute_segments(beam)
+				eng.get_dose(gpumcd_dose)
+
+			gpumcd_dose.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
+
 
 
 

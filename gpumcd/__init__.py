@@ -61,14 +61,16 @@ class Settings():
 
 		try:
 			self.directories = {} #put absolute paths in self.directories
-			self.directories['material_data'] = path.join(gpumcd_datadir,cfg.get('subdirectories','material_data'))
+			self.directories['material_data'] = path.join(gpumcd_datadir,cfg.get('subdirectories','material_data')).replace('\\','/')
 			assert(path.isdir(self.directories['material_data']))
-			self.directories['gpumcd_dll'] = path.join(gpumcd_datadir,cfg.get('subdirectories','gpumcd_dll'))
+			self.directories['gpumcd_dll'] = path.join(gpumcd_datadir,cfg.get('subdirectories','gpumcd_dll')).replace('\\','/')
 			assert(path.isdir(self.directories['gpumcd_dll']))
-			self.directories['hounsfield_conversion'] = path.join(gpumcd_datadir,cfg.get('subdirectories','hounsfield_conversion'))
+			self.directories['hounsfield_conversion'] = path.join(gpumcd_datadir,cfg.get('subdirectories','hounsfield_conversion')).replace('\\','/')
 			assert(path.isdir(self.directories['hounsfield_conversion']))
 
 			self.machinefiles = cfg._sections['gpumcd_machines']
+			for k,v in self.machinefiles.items():
+				self.machinefiles[k] = path.join(gpumcd_datadir,v).replace('\\','/')
 
 			self.debug={}
 			self.debug['cudaDeviceId']=cfg.getint('debug','cudaDeviceId')
@@ -162,20 +164,25 @@ class Accelerator():
 			self.energy = energy
 			self.filter = True #default
 			self.leafs_per_bank = 80
+			if energy == 6:
+				self.machfile = sett.machinefiles['Agility_MV6_FF']
+			if energy == 10:
+				self.machfile = sett.machinefiles['Agility_MV10_FF']
 		elif 'MLC80' in typestring or 'M80' in typestring:
 			self.type = 'MLCi80'
 			self.energy = energy
 			self.filter = True
 			self.leafs_per_bank = 40
+			ImportError("MLCi80 found, but no such machine exists in machine library.")
 		else:
 			ImportError("Unknown type of TreatmentMachineName found:"+typstring)
 
-		#FIXME set machfile, for which we need to know energy and filter.
-		#	sett.gpumcd_machines
+		# with open(self.machfile, 'r') as myfile:
+		# 	self.machfile = myfile.read()
+		# print(self.machfile)
+
 	def __str__(self):
 		return f"Accelerator is of type {self.type} with energy {self.energy}MV."
-
-
 
 
 class Rtplan():
@@ -187,19 +194,15 @@ class Rtplan():
 
 		Typically, N controlpoints result in N-1 segments.
 
-		Although I could not find an explicit statement on the subject, all spatial distances are returned in units of mm by pydicom. Implicit proof:
+		Although I could not find an explicit statement on the subject, all spatial distances are returned in units of mm by pydicom. We therefore convert mm to cm. Implicit proof:
 		https://pydicom.github.io/pydicom/stable/auto_examples/input_output/plot_read_rtplan.html
-
-		TODO:
-		* convert units pydicom (mm) to gpumcd (cm)
-		* Fix cumulative -> absolute weight
-		* Add dynamic/fixed cp (differen first/second for Pairs)
 		'''
 		assert(isinstance(sett,Settings))
 		assert(isinstance(rtplan_dicom,dicom.pydicom_object))
 
 		self.accelerator = Accelerator(sett,rtplan_dicom.data.BeamSequence[0].TreatmentMachineName,rtplan_dicom.data.BeamSequence[0].ControlPointSequence[0].NominalBeamEnergy)
 
+		self.sett = sett
 		if sett.debug['verbose']>0:
 			print(self.accelerator)
 
@@ -226,11 +229,17 @@ class Rtplan():
 				if "ASYMX" in thistype:
 					asymx_index = bld_index
 
-			self.beams.append(make_c_array(Segment,nbcps))
-			for cpi in range(nbcps):
-				# python has no references, so keep this in mind:
-				# from: rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi]
-				# to: self.beams[bi][cpi]
+			#following only available in first cp
+			isoCenter = [coor/10 for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
+			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle
+			collimatorAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle
+
+			# N cps = N-1 segments
+			self.beams.append(make_c_array(Segment,nbcps-1))
+
+			for cpi in range(nbcps-1):
+				cp_this = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi]
+				cp_next = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi+1]
 
 				self.beams[bi][cpi] = Segment()
 
@@ -245,28 +254,28 @@ class Rtplan():
 
 				# Now, let's see what our dicom gives us about this beam
 
-				self.beams[bi][cpi].beamInfo.relativeWeight = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].CumulativeMetersetWeight * bw
-				#isoc only in first cp
-				self.beams[bi][cpi].beamInfo.isoCenter = Float3(*rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition)
-				self.beams[bi][cpi].beamInfo.gantryAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].GantryAngle)
-				#TableTopEccentricAngle only in first cp
-				self.beams[bi][cpi].beamInfo.couchAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle)
-				#BeamLimitingDeviceAngle only in first cp
-				self.beams[bi][cpi].beamInfo.collimatorAngle = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle)
+				self.beams[bi][cpi].beamInfo.relativeWeight = (cp_next.CumulativeMetersetWeight-cp_this.CumulativeMetersetWeight) * bw
+				self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
+				#following only available in first cp
+				self.beams[bi][cpi].beamInfo.isoCenter = Float3(*isoCenter)
+				self.beams[bi][cpi].beamInfo.couchAngle = Pair(couchAngle)
+				self.beams[bi][cpi].beamInfo.collimatorAngle = Pair(collimatorAngle)
 
 				# MLCX
 				mlcx_r = []
 				mlcx_l = []
 				for l in range(self.accelerator.leafs_per_bank):
 					# rightleaves: eerste helft.
-					rval = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]
-					lval = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]
+					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
+					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
+					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
+					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
 
-					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval)
-					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval)
+					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
+					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
 
-					mlcx_r.append(rval)
-					mlcx_l.append(lval)
+					mlcx_r.extend([rval,rval_next])
+					mlcx_l.extend([lval,lval_next])
 
 				# prep for field extremeties
 				self.beams[bi][cpi].beamInfo.fieldMin = Pair()
@@ -274,65 +283,22 @@ class Rtplan():
 
 				#ASYM X
 				if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
-					#geen ASYMX, dus min van elke bank nemen voor fieldmin/max
-					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0])
-					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1])
+					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
+					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
 					#fieldmin/max
-					self.beams[bi][cpi].beamInfo.fieldMin.first = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]
-					self.beams[bi][cpi].beamInfo.fieldMax.first = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]
-					print(self.beams[bi][cpi].beamInfo.fieldMin.first)
-					print(self.beams[bi][cpi].beamInfo.fieldMax.first)
+					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
+					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
 				else:
-					pass
 					#if no ASYM X, then we must get extreme field borders from MLCX
 					self.beams[bi][cpi].beamInfo.fieldMin.first = min(mlcx_r)
 					self.beams[bi][cpi].beamInfo.fieldMax.first = max(mlcx_l)
 
 				# ASYM Y
-				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0])
-				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi].BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1])
+				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
+				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
 
-		# At this point, self.beams has the rtplan as-is. For final use in GPUMCD, controlpoints must be converted to Segments and mm to cm.
-		self.controlpoints_to_segments()
-
-	def controlpoints_to_segments(self):
-		'''
-		This functions does two things:
-		* Convert N contrpoints to N-1 segments.
-		* Convert cumulative weights to absolute weights.
-		'''
-		self.final_beams =
-
-
-
-
-	# for cp in data.BeamSequence[0].ControlPointSequence:
-	# 	weights_beam_0.append( cp.CumulativeMetersetWeight )
-
-	# for i in range(len(weights_beam_0)):
-	# 	print(i, '\t', weights_beam_0[i], '\t', end="")
-	# 	try:
-	# 		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
-	# 		print(weights_beam_0[i])
-	# 	except:
-	# 		pass
-
-
-	# was dis?:
-	#for beam in data.BeamSequence:
-		#i = 0
-		#for cp in beam.ControlPointSequence:
-			##print(i,cp.CumulativeMetersetWeight)
-			#weights_beam_0.append( cp.CumulativeMetersetWeight )
-			#i+=1
-
-
-		# machine:
-		#   beamsequence>beam1>TreatmentMachineName = NKIAgility6MV
-		# OR
-		#   beamsequence>beam1>beamtype = static #meaning?
-		#   beamsequence>beam1>radiationtype = Photon
-		#   beamsequence>beam1>controlpointsequence>cp1>NominalBeamEnergy = 6
+				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
+				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
 
 
 class Engine():
@@ -345,6 +311,7 @@ class Engine():
 		self.phantom = self.ct.phantom
 		self.materials = self.ct.materials
 		self.machfile = machfile
+		self.materials.append("Tungsten") # collimator material
 
 		self.__gpumcd_object__ = __gpumcd__(self.settings.directories['gpumcd_dll'])
 
@@ -380,14 +347,18 @@ class Engine():
 			self.settings.planSettings
 		)
 
-	def execute_segments(self,controlpoints):
-		assert(isinstance(controlpoints,ControlPoint))
+	def execute_segments(self,segments):
+		print(type(segments[0]))
+		assert(isinstance(segments[0],Segment))
 		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segments(
-			*c_array_to_pointer(controlpoints,True),
+			*c_array_to_pointer(segments,True),
 			self.settings.planSettings
 		)
 
 	def get_dose(self,dosemap):
+		'''
+		Adds the just computed dose to the dosemap you provide.
+		'''
 		assert(isinstance(dosemap,image.image))
 		assert(self.phantom.nvox() == dosemap.nvox())
 		self.__gpumcd_object__.get_dose(dosemap.get_ctypes_pointer_to_data())
@@ -427,7 +398,7 @@ class __gpumcd__():
 		self.execute_segments = libgpumcd.execute_segments
 		self.execute_segments.argtypes = [
 			ctypes.c_int,
-			ctypes.POINTER(ControlPoint),
+			ctypes.POINTER(Segment),
 			PlanSettings ]
 		self.execute_segments.restype  = ctypes.c_int
 
