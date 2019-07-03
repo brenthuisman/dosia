@@ -317,13 +317,12 @@ class Engine():
 
 		self.__lasterror__ = ctypes.create_string_buffer(1000)
 
-		# self.__gpumcd_object__.get_available_vram(0) #FIXME deze boyo geeft error...
-
+		self.num_parallel_streams = 1
 		max_streams = np.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox()))
-		self.num_parallel_streams = min(max_streams,3)
-		# self.num_parallel_streams = 1
-
-		#print (self.num_parallel_streams)
+		if max_streams > 1:
+			self.num_parallel_streams = 2 # more doesnt really make it faster anyway.
+		if max_streams == 0:
+			print(f"Possible problem: {self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox())} MB VRAM estimated required, but only {self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])} MB VRAM found. We'll try to run the simulation anyway, but it may fail.")
 
 		self.__lasterrorcode__ = self.__gpumcd_object__.init(
 			self.settings.debug['cudaDeviceId'],

@@ -4,13 +4,14 @@ import gpumcd,image
 
 print('Start of program.')
 
-sett = gpumcd.Settings("D:\\postdoc\\gpumcd_data")
+sett = gpumcd.Settings("c:\\postdoc\\gpumcd_data")
 print(sett.planSettings.goalSfom)
 
-casedir = "D:\\postdoc\\analyses\\gpumcd_python"
+casedir = "c:\\postdoc\\analyses\\gpumcd_python"
 
 ct_image=image.image(path.join(casedir,'ct.xdr'))
 ct_image.ct_to_hu(1000,1)
+ct_image.resample([3,3,3])
 
 ct = gpumcd.CT(sett,ct_image) #for dicoms, dont set intercept,slope.
 
@@ -18,9 +19,9 @@ ct = gpumcd.CT(sett,ct_image) #for dicoms, dont set intercept,slope.
 
 # TODO RTbeam
 
-machfile = "D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
+machfile = "c:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
 
-engine = gpumcd.Engine(sett,ct.phantom,ct.materials,machfile)
+engine = gpumcd.Engine(sett,ct,machfile)
 
 print('gpumcd init done.')
 

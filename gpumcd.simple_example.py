@@ -3,7 +3,7 @@ import gpumcd
 from os import path
 import image
 
-outputdir = "D:\\postdoc\\analyses\\gpumcd_python"
+outputdir = "c:\\postdoc\\analyses\\gpumcd_python"
 
 print('Start of program.')
 
@@ -50,24 +50,23 @@ lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
-Engine = gpumcd.__gpumcd__("D:/postdoc/gpumcd_data/dll")
+Engine = gpumcd.__gpumcd__("c:/postdoc/gpumcd_data/dll")
 
 print('libgpumcd loaded, starting gpumcd init...')
 
 print("Engine.get_available_vram(0)",Engine.get_available_vram(0))
 print("Engine.estimate_vram_consumption(nvox)",Engine.estimate_vram_consumption(nvox))
 
-max_streams = np.floor(Engine.get_available_vram(0)/Engine.estimate_vram_consumption(nvox))
-n_streams = min(max_streams,3)
+n_streams = 1
 
 retval = Engine.init(
 	0,
 	0,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/materials_clin"),
+	gpumcd.str2charp("c:/postdoc/gpumcd_data/materials_clin"),
 	*gpumcd.strlist2charpp(materials),
 	physicsSettings,
 	phantom,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
+	gpumcd.str2charp("c:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
 	n_streams,
 	ctypes.byref(lasterror)
 )
