@@ -58,7 +58,7 @@ class PlanSettings(ctypes.Structure):
 
 class Phantom(ctypes.Structure):
 	'''
-	use the massDensityArray_data and mediumIndexArray_data members. they're not part of the struct, but are what the massDensityArray and mediumIndexArray pointers point to.
+	This structure defines the phantom in the DICOM HFS system.
 	'''
 	_fields_ = [("numVoxels", Int3), ("voxelSizes", Float3), ("phantomCorner", Float3), ("massDensityArray", ctypes.POINTER(ctypes.c_float)), ("mediumIndexArray", ctypes.POINTER(ctypes.c_float))]
 	def __init__(self,*args,**kwargs):
@@ -81,13 +81,13 @@ class Phantom(ctypes.Structure):
 			if dens.nvox() != med.nvox():
 				raise IOError("Sorry, phantoms can only be instantiated with images of identical dimensions.")
 
-			nVoxels =  med.header['DimSize'][0]* med.header['DimSize'][1]* med.header['DimSize'][2]
+			nVoxels = med.nvox()
 			self.__massDensityArray_data = (ctypes.c_float * nVoxels)()
 			self.__mediumIndexArray_data = (ctypes.c_float * nVoxels)()
 
 			# put data in right order, as if saving to disk.
-			dens_imdata = np.asarray(dens.imdata.swapaxes(0, dens.header['NDims'] - 1),order='C').flatten()
-			med_imdata = np.asarray(med.imdata.swapaxes(0, med.header['NDims'] - 1),order='C').flatten()
+			dens_imdata = np.asarray(dens.imdata.swapaxes(0, len(dens.imdata.shape) - 1),order='C').flatten()
+			med_imdata = np.asarray(med.imdata.swapaxes(0, len(med.imdata.shape) - 1),order='C').flatten()
 			for i,(d,m) in enumerate(zip( dens_imdata,med_imdata ) ):
 				self.__massDensityArray_data[i] = d
 				self.__mediumIndexArray_data[i] = m

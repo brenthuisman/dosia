@@ -142,6 +142,8 @@ class CT():
 		med=dens.copy()
 
 		self.materials = med.density_to_materialindex(dens2mat_table)
+		self.materials.append("Tungsten") # collimator material
+
 		self.phantom=Phantom(massDensityArray_image=dens,mediumIndexArray_image=med)
 		self.dosemap = image.image(DimSize=med.header['DimSize'], ElementSpacing=med.header['ElementSpacing'], Offset=med.header['Offset'], dt='<f4')
 
@@ -159,11 +161,13 @@ class Accelerator():
 		self.filter = None #unknown
 		self.leafs_per_bank = None
 		self.machfile = None
+		self.parallelJaw = True
 		if 'MLC160' in typestring or 'M160' in typestring:
 			self.type = 'Agility'
 			self.energy = energy
 			self.filter = True #default
 			self.leafs_per_bank = 80
+			self.parallelJaw = False # Agility heeft GEEN parallelJaw
 			if energy == 6:
 				self.machfile = sett.machinefiles['Agility_MV6_FF']
 			if energy == 10:
@@ -231,7 +235,7 @@ class Rtplan():
 
 			#following only available in first cp
 			isoCenter = [coor/10 for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
-			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle
+			couchAngle = 360 - rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle #invert TODO check if needed
 			collimatorAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle
 
 			# N cps = N-1 segments
@@ -245,10 +249,10 @@ class Rtplan():
 
 				self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1) # ASYMY
 
-				if self.accelerator.type == "Agility":
-					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0) # agility heeft ASYMX/parallelJaw
+				if self.accelerator.parallelJaw:
+					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0)
 				else:
-					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(-1) # MLCi80 heeft geen ASYMX/parallelJaw
+					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(-1)
 
 				self.beams[bi][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
 
@@ -308,29 +312,26 @@ class Engine():
 	def __init__(self,settings,ct,machfile):
 		self.settings = settings
 		self.ct = ct
-		self.phantom = self.ct.phantom
-		self.materials = self.ct.materials
 		self.machfile = machfile
-		self.materials.append("Tungsten") # collimator material
 
 		self.__gpumcd_object__ = __gpumcd__(self.settings.directories['gpumcd_dll'])
 
 		self.__lasterror__ = ctypes.create_string_buffer(1000)
 
 		self.num_parallel_streams = 1
-		max_streams = np.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox()))
+		max_streams = np.floor(self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])/self.__gpumcd_object__.estimate_vram_consumption(self.ct.phantom.nvox()))
 		if max_streams > 1:
 			self.num_parallel_streams = 2 # more doesnt really make it faster anyway.
 		if max_streams == 0:
-			print(f"Possible problem: {self.__gpumcd_object__.estimate_vram_consumption(self.phantom.nvox())} MB VRAM estimated required, but only {self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])} MB VRAM found. We'll try to run the simulation anyway, but it may fail.")
+			print(f"Possible problem: {self.__gpumcd_object__.estimate_vram_consumption(self.ct.phantom.nvox())} MB VRAM estimated required, but only {self.__gpumcd_object__.get_available_vram(self.settings.debug['cudaDeviceId'])} MB VRAM found. We'll try to run the simulation anyway, but it may fail.")
 
 		self.__lasterrorcode__ = self.__gpumcd_object__.init(
 			self.settings.debug['cudaDeviceId'],
 			self.settings.debug['verbose'],
 			str2charp(self.settings.directories['material_data']),
-			*strlist2charpp(self.materials),
+			*strlist2charpp(self.ct.materials),
 			self.settings.physicsSettings,
-			self.phantom,
+			self.ct.phantom,
 			str2charp(self.machfile),
 			self.num_parallel_streams,
 			ctypes.byref(self.__lasterror__)
@@ -347,22 +348,38 @@ class Engine():
 		)
 
 	def execute_segments(self,segments):
-		print(type(segments[0]))
 		assert(isinstance(segments[0],Segment))
 		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segments(
 			*c_array_to_pointer(segments,True),
 			self.settings.planSettings
 		)
 
-	def get_dose(self,dosemap):
+	def __get_dose(self,dosemap):
 		'''
-		Adds the just computed dose to the dosemap you provide.
+		Write dose to your own dosemap.
 		'''
 		assert(isinstance(dosemap,image.image))
-		assert(self.phantom.nvox() == dosemap.nvox())
+		assert(self.ct.phantom.nvox() == dosemap.nvox())
 		self.__gpumcd_object__.get_dose(dosemap.get_ctypes_pointer_to_data())
 		indata = np.asarray(dosemap.imdata, order='F')
-		dosemap.imdata = indata.reshape(tuple(reversed(dosemap.header['DimSize']))).swapaxes(0, dosemap.header['NDims'] - 1)
+		# dosemap.imdata = indata.reshape(tuple(reversed(dosemap.header['DimSize']))).swapaxes(0, dosemap.header['NDims'] - 1)
+
+		# self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
+		dosemap.imdata = indata.reshape(tuple(reversed(indata.shape))).swapaxes(0, len(indata.shape) - 1)
+
+
+	def set_dose(self):
+		'''
+		Update ct.dosemap with dose data computed by GPUMCD in last execute.
+		'''
+		tmpdose = np.zeros(self.ct.dosemap.nvox(),dtype='<f4')
+		self.__gpumcd_object__.get_dose(tmpdose.ctypes.data_as(ctypes.POINTER(ctypes.c_float)))
+		tmpdose = np.asarray(tmpdose, order='F')
+		# self.ct.dosemap.imdata = indata.reshape(tuple(reversed(self.ct.dosemap.header['DimSize']))).swapaxes(0, self.ct.dosemap.header['NDims'] - 1)
+
+		# self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
+		tmpdose = tmpdose.reshape(tuple(reversed(self.ct.dosemap.imdata.shape))).swapaxes(0, len(self.ct.dosemap.imdata.shape) - 1)
+		self.ct.dosemap.imdata += tmpdose
 
 
 class __gpumcd__():

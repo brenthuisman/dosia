@@ -4,10 +4,10 @@ import gpumcd,image
 
 print('Start of program.')
 
-sett = gpumcd.Settings("c:\\postdoc\\gpumcd_data")
+sett = gpumcd.Settings("d:\\postdoc\\gpumcd_data")
 print(sett.planSettings.goalSfom)
 
-casedir = "c:\\postdoc\\analyses\\gpumcd_python"
+casedir = "d:\\postdoc\\analyses\\gpumcd_python"
 
 ct_image=image.image(path.join(casedir,'ct.xdr'))
 ct_image.ct_to_hu(1000,1)
@@ -15,11 +15,7 @@ ct_image.resample([3,3,3])
 
 ct = gpumcd.CT(sett,ct_image) #for dicoms, dont set intercept,slope.
 
-
-
-# TODO RTbeam
-
-machfile = "c:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
+machfile = "d:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"
 
 engine = gpumcd.Engine(sett,ct,machfile)
 
@@ -79,7 +75,7 @@ print (engine.lasterror())
 
 print("runtime gpumcd:",end_time-start_time)
 
-engine.get_dose(ct.dosemap)
+engine.set_dose()
 
-ct.dosemap.saveas(path.join(casedir,'dose.xdr'))
-ct.dosemap.saveas(path.join(casedir,'dose.mhd'))
+engine.ct.dosemap.saveas(path.join(casedir,'dose.xdr'))
+engine.ct.dosemap.saveas(path.join(casedir,'dose.mhd'))
