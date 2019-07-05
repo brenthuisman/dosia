@@ -4,7 +4,7 @@ from .types import *
 from .ctypes_helpers import *
 
 class Settings():
-	def __init__(self,gpumcd_datadir):
+	def __init__(self,gpumcd_datadir=None):
 		defkwargs = {
 			'subdirectories':{
 				'material_data': 'materials_clin',
@@ -50,23 +50,22 @@ class Settings():
 			}
 		}
 
-		ini_file = path.join(gpumcd_datadir,"dosia.ini")
 		cfg = configparser.ConfigParser(inline_comment_prefixes=('#', ';'))
 		cfg.optionxform = lambda option: option #prevent python lowercaseing of categories/keys
 		cfg.read_dict(defkwargs)
-		if path.isfile(ini_file):
-			cfg.read(ini_file)
-		else:
+		try:
+			cfg.read(path.join(gpumcd_datadir,"dosia.ini"))
+		except:
 			print("No ini provided, using default settings.")
+
+		if gpumcd_datadir is None:
+			gpumcd_datadir = ''
 
 		try:
 			self.directories = {} #put absolute paths in self.directories
 			self.directories['material_data'] = path.join(gpumcd_datadir,cfg.get('subdirectories','material_data')).replace('\\','/')
-			assert(path.isdir(self.directories['material_data']))
 			self.directories['gpumcd_dll'] = path.join(gpumcd_datadir,cfg.get('subdirectories','gpumcd_dll')).replace('\\','/')
-			assert(path.isdir(self.directories['gpumcd_dll']))
 			self.directories['hounsfield_conversion'] = path.join(gpumcd_datadir,cfg.get('subdirectories','hounsfield_conversion')).replace('\\','/')
-			assert(path.isdir(self.directories['hounsfield_conversion']))
 
 			self.machinefiles = cfg._sections['gpumcd_machines']
 			for k,v in self.machinefiles.items():
@@ -107,6 +106,15 @@ class Settings():
 			print("Error parsing settings. Please check your dosia.ini for validity.")
 			print(e)
 			raise
+
+		try:
+			assert(path.isdir(self.directories['material_data']))
+			assert(path.isdir(self.directories['gpumcd_dll']))
+			assert(path.isdir(self.directories['hounsfield_conversion']))
+		except AssertionError:
+			print("You provided nonexisting GPUMCD directories.")
+
+
 
 
 class CT():
@@ -235,7 +243,7 @@ class Rtplan():
 
 			#following only available in first cp
 			isoCenter = [coor/10 for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
-			couchAngle = 360 - rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle #invert TODO check if needed
+			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle #TODO check if needed need to invert, or patsupportangle
 			collimatorAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle
 
 			# N cps = N-1 segments
@@ -269,11 +277,11 @@ class Rtplan():
 				mlcx_r = []
 				mlcx_l = []
 				for l in range(self.accelerator.leafs_per_bank):
-					# rightleaves: eerste helft.
-					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
-					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
-					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
-					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
+					# leftleaves: eerste helft.
+					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
+					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
+					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
+					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
 
 					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
 					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
@@ -303,6 +311,12 @@ class Rtplan():
 
 				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
 				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
+
+				# apply field margins
+				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']/10
+				self.beams[bi][cpi].beamInfo.fieldMin.second -= self.sett.dose['field_margin']/10
+				self.beams[bi][cpi].beamInfo.fieldMax.first += self.sett.dose['field_margin']/10
+				self.beams[bi][cpi].beamInfo.fieldMax.second += self.sett.dose['field_margin']/10
 
 
 class Engine():

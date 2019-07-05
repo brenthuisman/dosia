@@ -10,28 +10,25 @@ studies = dicom.pydicom_casedir(casedir)
 
 for studyid,v in studies.items():
 	# print ('brent',studyid,'\n')
-	# v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
-	v['ct'].resample([3,3,3])
-	v['ct'].ct_to_hu(1000,1) #FIXME: read these values from plan.
-	v['ct'].saveas(path.join(casedir,"xdr","ct.xdr"))
-	v['ct_obj'] = gpumcd.CT(sett,v['ct'])
+	v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
 	for sopid,d in v.items():
 		if isinstance(d,dict):
-			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose.xdr"))
-			d['dose'].crop_as(v['ct'])
-			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose_ctgrid.xdr"))
+			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose_tps.xdr"))
+			ctcpy = v['ct']
+			ctcpy.crop_as(d['dose'])
+			ctcpy.saveas(path.join(casedir,"xdr",sopid,"ct_on_dosegrid.xdr"))
+			ct_obj = gpumcd.CT(sett,ctcpy)
 
 			p=gpumcd.Rtplan(sett, d['plan'])
-			v['ct_obj'].dosemap.zero_out()
+			ct_obj.dosemap.zero_out()
 
 			for i,beam in enumerate(p.beams):
-				eng=gpumcd.Engine(sett,v['ct_obj'],p.accelerator.machfile)
+				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
 				eng.execute_segments(beam)
 				print (eng.lasterror())
-				# eng.get_dose(v['ct_obj'].dosemap)
 				eng.set_dose()
-				# v['ct_obj'].dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd"+str(i)+".xdr"))
-			v['ct_obj'].dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
+			ct_obj.dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
+			quit()
 
 
 

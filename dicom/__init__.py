@@ -25,7 +25,6 @@ class pydicom_object():
 			self.PatientPosition=self.data.PatientPosition
 			self.RescaleIntercept=self.data.RescaleIntercept
 			self.RescaleSlope=self.data.RescaleSlope
-			self.PatientPosition=self.data.PatientPosition
 		elif self.modality == "RTDOSE":
 			self.sopid = self.data.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID
 		elif self.modality == "RTPLAN":
@@ -43,7 +42,7 @@ def pydicom_casedir(dname):#,settings):
 		if a.modality == 'CT':
 			studies[a.studyid]['ct'] = image.image(ct_dir)
 			#seems that the images is already in HU units
-			#studies[a.studyid]['ct'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
+			studies[a.studyid]['ct'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
 		else:
 			IOError("Expected CT image, but",a.modality,"was found.")
 
