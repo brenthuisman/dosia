@@ -293,22 +293,28 @@ class Rtplan():
 				self.beams[bi][cpi].beamInfo.fieldMin = Pair()
 				self.beams[bi][cpi].beamInfo.fieldMax = Pair()
 
-				#ASYM X
-				if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
+				#ASYM X. ASYMX may be present in plan, even if accelerator doesnt have it.
+				# if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
+				if asymx_index is not None:
 					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
 					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
-					#fieldmin/max
+					# x coords of field size
 					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
 					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
 				else:
 					#if no ASYM X, then we must get extreme field borders from MLCX
-					self.beams[bi][cpi].beamInfo.fieldMin.first = min(mlcx_r)
-					self.beams[bi][cpi].beamInfo.fieldMax.first = max(mlcx_l)
+					print("No ASYMX jaw found in dicom, using leaf extrema to find field extrema.")
+					raise NotImplementedError("For missing ASYMX, we need to find leaf extrema within ASYMY bounds. This has not been implemented yet.")
+					# self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l)/10)
+					# self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r)/10)
+					# self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
+					# self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
 
 				# ASYM Y
 				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
 				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
 
+				# y coords of fieldsize
 				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
 				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
 
