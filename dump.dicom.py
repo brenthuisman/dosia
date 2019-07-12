@@ -26,7 +26,7 @@ for studyid,v in studies.items():
 				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
 				eng.execute_segments(beam)
 				print (eng.lasterror())
-				eng.set_dose()
+				eng.get_dose(ct_obj.dosemap)
 			ct_obj.dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
 			quit()
 

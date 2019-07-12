@@ -1,5 +1,5 @@
 from gui import *
-import numpy as np
+import numpy as np,time
 import dicom,gpumcd
 
 class app_frame(Frame):
@@ -10,6 +10,10 @@ class app_frame(Frame):
 		Grid.rowconfigure(master, 0, weight=1)
 		Grid.columnconfigure(master, 0, weight=1)
 		self.opendicomobject = None
+
+		self.selectbeam = IntVar()
+		self.selectsegment = IntVar()
+		self.selectpair = IntVar()
 
 		#swithin that, frames, row-wise, which are updated as necesary.
 		#topbar: open file button, contextual info/options
@@ -26,7 +30,12 @@ class app_frame(Frame):
 		def newfile():
 			if self.opendicomobject.modality == "RTPLAN":
 				self.plan = gpumcd.Rtplan(gpumcd.Settings(),self.opendicomobject)
-				self.new_window(self.plan_nav(), self.plan_viewer())
+				self.tot_segments = 0
+				for b in self.plan.beams:
+					for s in b:
+						self.tot_segments += 1
+
+				self.update_plan_view(self.selectbeam.get(),self.selectsegment.get(),self.selectpair.get())
 			if self.opendicomobject.modality in ["RTDOSE","CT"]:
 				self.new_window(self.topbar_image(), self.image_viewer())
 
@@ -42,12 +51,27 @@ class app_frame(Frame):
 
 		return subframe
 
+	def update_plan_view(self,bs=0,ss=0,ps=0,_=None):
+		self.new_window(self.plan_nav(), self.plan_viewer(bs,ss,ps))
+		# if _ is None:
+		# 	for b in range(len(self.plan.beams)):
+		# 		for s in range(len(self.plan.beams[b])):
+		# 			time.sleep(0.05)
+		# 			self.new_window(self.plan_nav(), self.plan_viewer(b,s))
 
-	def plan_nav(self):
+
+	def plan_nav(self):#,beami=0,segmenti=0):
 
 		subframe = Frame(self)
-		# TODO nav beams, cpis
-		# take .first of each segment, and then recreate last cpi by taking .second of the last segment.
+
+		s1 = Scale(subframe,orient=HORIZONTAL,label="Beam",from_=0,to=len(self.plan.beams)-1,resolution=1,variable=self.selectbeam,command= lambda _: self.update_plan_view(self.selectbeam.get(),self.selectsegment.get(),self.selectpair.get()))
+		s1.pack(side='left')
+
+		s2 = Scale(subframe,orient=HORIZONTAL,label="Segment",from_=0,to=len(self.plan.beams[self.selectbeam.get()])-1,resolution=1,variable=self.selectsegment,command= lambda _: self.update_plan_view(self.selectbeam.get(),self.selectsegment.get(),self.selectpair.get()))
+		s2.pack(fill=X,side='left', expand=True)
+
+		s3 = Scale(subframe,orient=HORIZONTAL,label="Start <> End",showvalue=0,from_=0,to=1,resolution=1,variable=self.selectpair,command= lambda _: self.update_plan_view(self.selectbeam.get(),self.selectsegment.get(),self.selectpair.get()))
+		s3.pack(side='right')
 
 		return subframe
 
@@ -71,16 +95,17 @@ class app_frame(Frame):
 		self.mainframe.grid(row=2, column=0, sticky=N+S+E+W,padx=20,pady=20)
 		return
 
-	def plan_viewer(self,beami=0,segmenti=0):
+	def plan_viewer(self,beami=0,segmenti=0,pairi=0):
+		attr="second"
+		if pairi==0:
+			attr="first"
+
 		subframe = Frame(self)
 
 		#800x800
 		vert_zoom= 20
 		canvas = Canvas(subframe)
 		canvas.configure(width=800, height=800)
-		# canvas.create_line(15, 25, 200, 25)
-		# canvas.create_line(300, 35, 300, 200, dash=(4, 2))
-		# canvas.create_line(55, 85, 155, 85, 105, 180, 55, 85)
 
 		leafedges = np.linspace(0,800,self.plan.accelerator.leafs_per_bank+1)
 
@@ -89,48 +114,61 @@ class app_frame(Frame):
 			bound2 = leafedges[l+1]
 
 			#left
-			coord = vert_zoom * self.plan.beams[beami][segmenti].collimator.mlc.leftLeaves[l].first
-			canvas.create_line(400+coord, bound1, 400+coord, bound2)
-			canvas.create_line(400+coord-50, bound1, 400+coord, bound1)
-			canvas.create_line(400+coord-50, bound2, 400+coord, bound2)
+			coord = vert_zoom * getattr(self.plan.beams[beami][segmenti].collimator.mlc.leftLeaves[l],attr)
+			canvas.create_line(400+coord, bound1, 400+coord, bound2,fill="green")
+			canvas.create_line(400+coord-50, bound1, 400+coord, bound1,fill="green")
+			canvas.create_line(400+coord-50, bound2, 400+coord, bound2,fill="green")
 
 			#right
-			coord = vert_zoom * self.plan.beams[beami][segmenti].collimator.mlc.rightLeaves[l].first
+			coord = vert_zoom * getattr(self.plan.beams[beami][segmenti].collimator.mlc.rightLeaves[l],attr)
 			canvas.create_line(400+coord, bound1, 400+coord, bound2,fill="blue")
 			canvas.create_line(400+coord+50, bound1, 400+coord, bound1,fill="blue")
 			canvas.create_line(400+coord+50, bound2, 400+coord, bound2,fill="blue")
 
-			#jaws
-			l,r = vert_zoom* self.plan.beams[beami][segmenti].collimator.parallelJaw.j1.first, vert_zoom * self.plan.beams[beami][segmenti].collimator.parallelJaw.j2.first
-			canvas.create_line(400+l, 0, 400+l, 800,fill='black')
-			canvas.create_line(400+r, 0, 400+r, 800,fill='blue')
+		if self.plan.beams[beami][segmenti].collimator.parallelJaw.orientation.value == -1:
+			dash = (4,2)
+		else:
+			dash = None
 
-			t,b = vert_zoom* self.plan.beams[beami][segmenti].collimator.perpendicularJaw.j1.first, vert_zoom * self.plan.beams[beami][segmenti].collimator.perpendicularJaw.j2.first
-			canvas.create_line(0, 400+t, 800, 400+t,fill='yellow')
-			canvas.create_line(0, 400+b, 800, 400+b,fill='green')
+		#jaws
+		l,r = vert_zoom* getattr(self.plan.beams[beami][segmenti].collimator.parallelJaw.j1,attr), vert_zoom * getattr(self.plan.beams[beami][segmenti].collimator.parallelJaw.j2,attr)
+		canvas.create_line(400+l, 0, 400+l, 800,fill='green', width=2,dash=dash)
+		canvas.create_line(400+r, 0, 400+r, 800,fill='blue', width=2,dash=dash)
 
-			# fieldsize
-			x1,x2 = vert_zoom* self.plan.beams[beami][segmenti].beamInfo.fieldMin.first, vert_zoom * self.plan.beams[beami][segmenti].beamInfo.fieldMax.first
-			y1,y2 = vert_zoom* self.plan.beams[beami][segmenti].beamInfo.fieldMin.second, vert_zoom * self.plan.beams[beami][segmenti].beamInfo.fieldMax.second
-			canvas.create_line(400+x1, 400+y1, 400+x1, 400+y2,fill='red')
-			canvas.create_line(400+x1, 400+y1, 400+x2, 400+y1,fill='red')
-			canvas.create_line(400+x1, 400+y2, 400+x2, 400+y2,fill='red')
-			canvas.create_line(400+x2, 400+y1, 400+x2, 400+y2,fill='red')
+		t,b = vert_zoom* getattr(self.plan.beams[beami][segmenti].collimator.perpendicularJaw.j1,attr), vert_zoom * getattr(self.plan.beams[beami][segmenti].collimator.perpendicularJaw.j2,attr)
+		canvas.create_line(0, 400+t, 800, 400+t,fill='orange', width=2)
+		canvas.create_line(0, 400+b, 800, 400+b,fill='brown', width=2)
 
+		# fieldsize
+		x1,x2 = vert_zoom* self.plan.beams[beami][segmenti].beamInfo.fieldMin.first, vert_zoom * self.plan.beams[beami][segmenti].beamInfo.fieldMax.first
+		y1,y2 = vert_zoom* self.plan.beams[beami][segmenti].beamInfo.fieldMin.second, vert_zoom * self.plan.beams[beami][segmenti].beamInfo.fieldMax.second
+		canvas.create_line(400+x1, 400+y1, 400+x1, 400+y2,fill='red', width=2)
+		canvas.create_line(400+x1, 400+y1, 400+x2, 400+y1,fill='red', width=2)
+		canvas.create_line(400+x1, 400+y2, 400+x2, 400+y2,fill='red', width=2)
+		canvas.create_line(400+x2, 400+y1, 400+x2, 400+y2,fill='red', width=2)
 
-
-
-
+		canvas_textbox = canvas.create_text(10, 10, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text="viewport: 40cm x 40cm")
+		canvas_textbox = canvas.create_text(10, 25, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text=f"isoCenter: {str(self.plan.beams[beami][0].beamInfo.isoCenter.x)[:5]},{str(self.plan.beams[beami][0].beamInfo.isoCenter.y)[:5]},{str(self.plan.beams[beami][0].beamInfo.isoCenter.z)[:5]}")
+		canvas_textbox = canvas.create_text(10, 40, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text=f"weight: {str(self.plan.beams[beami][segmenti].beamInfo.relativeWeight)}")
+		canvas_textbox = canvas.create_text(10, 55, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text=f"gantryAngle: {str(getattr(self.plan.beams[beami][segmenti].beamInfo.gantryAngle,attr))}")
+		canvas_textbox = canvas.create_text(10, 70, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text=f"collimatorAngle: {str(getattr(self.plan.beams[beami][0].beamInfo.collimatorAngle,attr))}")
+		canvas_textbox = canvas.create_text(10, 85, anchor="nw")
+		canvas.itemconfig(canvas_textbox, text=f"couchAngle: {str(getattr(self.plan.beams[beami][0].beamInfo.couchAngle,attr))}")
 
 		canvas.pack()#fill=BOTH, expand=1)
 
 		return subframe
 
 
-
 	def blank_frame(self):
 		subframe = Frame(self)
 		return subframe
+
 
 def main():
 	root = Tk()

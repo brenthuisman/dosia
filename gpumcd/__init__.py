@@ -209,6 +209,7 @@ class Rtplan():
 		Although I could not find an explicit statement on the subject, all spatial distances are returned in units of mm by pydicom. We therefore convert mm to cm. Implicit proof:
 		https://pydicom.github.io/pydicom/stable/auto_examples/input_output/plot_read_rtplan.html
 		'''
+		scale = 0.1 #mm to cm
 		assert(isinstance(sett,Settings))
 		assert(isinstance(rtplan_dicom,dicom.pydicom_object))
 
@@ -218,16 +219,20 @@ class Rtplan():
 		if sett.debug['verbose']>0:
 			print(self.accelerator)
 
-		beamweights = []
+		self.beamweights = []
 		for b in range(rtplan_dicom.data.FractionGroupSequence[0].NumberOfBeams):
 			#theres only 1 fractiongroup
-			beamweights.append(float(rtplan_dicom.data.FractionGroupSequence[0].ReferencedBeamSequence[b].BeamMeterset))
+			self.beamweights.append(float(rtplan_dicom.data.FractionGroupSequence[0].ReferencedBeamSequence[b].BeamMeterset))
 
 		self.beams=[] #for each beam, controlpoints
-		for bi,bw in enumerate(beamweights):
+		for bi,bw in enumerate(self.beamweights):
+			# if bi > 0:
+			# 	break
 			#total weight of cps in beam is 1
 			# convert cumulative weights to relative weights and then absolute weights using bw.
 			nbcps = rtplan_dicom.data.BeamSequence[bi].NumberOfControlPoints
+			nsegments = (nbcps-1)
+			# nsegments = 1
 
 			mlcx_index = None
 			asymy_index = None
@@ -242,14 +247,14 @@ class Rtplan():
 					asymx_index = bld_index
 
 			#following only available in first cp
-			isoCenter = [coor/10 for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
-			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].TableTopEccentricAngle #TODO check if needed need to invert, or patsupportangle
+			isoCenter = [coor*scale for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
+			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].PatientSupportAngle #or TableTopEccentricAngle?
 			collimatorAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle
 
 			# N cps = N-1 segments
-			self.beams.append(make_c_array(Segment,nbcps-1))
+			self.beams.append(make_c_array(Segment,nsegments))
 
-			for cpi in range(nbcps-1):
+			for cpi in range(nsegments):
 				cp_this = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi]
 				cp_next = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[cpi+1]
 
@@ -278,10 +283,10 @@ class Rtplan():
 				mlcx_l = []
 				for l in range(self.accelerator.leafs_per_bank):
 					# leftleaves: eerste helft.
-					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
-					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
-					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]/10
-					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]/10
+					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
+					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
 
 					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
 					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
@@ -296,33 +301,45 @@ class Rtplan():
 				#ASYM X. ASYMX may be present in plan, even if accelerator doesnt have it.
 				# if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
 				if asymx_index is not None:
-					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
-					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
+					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale)
+					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale)
 					# x coords of field size
-					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]/10)
-					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]/10)
+					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale)
+					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale)
 				else:
 					#if no ASYM X, then we must get extreme field borders from MLCX
 					print("No ASYMX jaw found in dicom, using leaf extrema to find field extrema.")
 					raise NotImplementedError("For missing ASYMX, we need to find leaf extrema within ASYMY bounds. This has not been implemented yet.")
-					# self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l)/10)
-					# self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r)/10)
+					# self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l)*scale)
+					# self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r)*scale)
 					# self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
 					# self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
 
 				# ASYM Y
-				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
-				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
+				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
+				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
 
 				# y coords of fieldsize
-				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]/10)
-				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]/10)
+				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
+				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
 
 				# apply field margins
-				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']/10
-				self.beams[bi][cpi].beamInfo.fieldMin.second -= self.sett.dose['field_margin']/10
-				self.beams[bi][cpi].beamInfo.fieldMax.first += self.sett.dose['field_margin']/10
-				self.beams[bi][cpi].beamInfo.fieldMax.second += self.sett.dose['field_margin']/10
+				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']*scale
+				self.beams[bi][cpi].beamInfo.fieldMin.second -= self.sett.dose['field_margin']*scale
+				self.beams[bi][cpi].beamInfo.fieldMax.first += self.sett.dose['field_margin']*scale
+				self.beams[bi][cpi].beamInfo.fieldMax.second += self.sett.dose['field_margin']*scale
+
+
+		if sett.debug['verbose']>0:
+			sumweights=0
+			for beam in self.beams:
+				beamweight=0
+				for segment in beam:
+					sumweights+=segment.beamInfo.relativeWeight
+					beamweight+=segment.beamInfo.relativeWeight
+				print(f"beamweight {beamweight}")
+			print(f"total weight {sumweights}")
+
 
 
 class Engine():
@@ -374,32 +391,18 @@ class Engine():
 			self.settings.planSettings
 		)
 
-	def __get_dose(self,dosemap):
+	def get_dose(self,dosemap):
 		'''
-		Write dose to your own dosemap.
+		Add dose to provided dosemap voxel by voxel.
 		'''
+		#cant write to self.ct.dosemap directly, because self will be destroyed after this function exits!
 		assert(isinstance(dosemap,image.image))
 		assert(self.ct.phantom.nvox() == dosemap.nvox())
-		self.__gpumcd_object__.get_dose(dosemap.get_ctypes_pointer_to_data())
-		indata = np.asarray(dosemap.imdata, order='F')
-		# dosemap.imdata = indata.reshape(tuple(reversed(dosemap.header['DimSize']))).swapaxes(0, dosemap.header['NDims'] - 1)
-
-		# self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-		dosemap.imdata = indata.reshape(tuple(reversed(indata.shape))).swapaxes(0, len(indata.shape) - 1)
-
-
-	def set_dose(self):
-		'''
-		Update ct.dosemap with dose data computed by GPUMCD in last execute.
-		'''
-		tmpdose = np.zeros(self.ct.dosemap.nvox(),dtype='<f4')
-		self.__gpumcd_object__.get_dose(tmpdose.ctypes.data_as(ctypes.POINTER(ctypes.c_float)))
-		tmpdose = np.asarray(tmpdose, order='F')
-		# self.ct.dosemap.imdata = indata.reshape(tuple(reversed(self.ct.dosemap.header['DimSize']))).swapaxes(0, self.ct.dosemap.header['NDims'] - 1)
-
-		# self.imdata = self.imdata.reshape(self.imdata.shape[::-1])
-		tmpdose = tmpdose.reshape(tuple(reversed(self.ct.dosemap.imdata.shape))).swapaxes(0, len(self.ct.dosemap.imdata.shape) - 1)
-		self.ct.dosemap.imdata += tmpdose
+		newdose = image.image(DimSize=dosemap.header['DimSize'], ElementSpacing=dosemap.header['ElementSpacing'], Offset=dosemap.header['Offset'], dt='<f4')
+		self.__gpumcd_object__.get_dose(newdose.get_ctypes_pointer_to_data())
+		indata = np.asarray(newdose.imdata, order='F')
+		indata = indata.reshape(tuple(reversed(indata.shape))).swapaxes(0, len(indata.shape) - 1)
+		self.ct.dosemap.imdata += indata
 
 
 class __gpumcd__():
