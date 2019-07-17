@@ -216,6 +216,7 @@ class Rtplan():
 		self.accelerator = Accelerator(sett,rtplan_dicom.data.BeamSequence[0].TreatmentMachineName,rtplan_dicom.data.BeamSequence[0].ControlPointSequence[0].NominalBeamEnergy)
 
 		self.sett = sett
+		firstsegmentonly = False
 		if sett.debug['verbose']>0:
 			print(self.accelerator)
 
@@ -226,13 +227,15 @@ class Rtplan():
 
 		self.beams=[] #for each beam, controlpoints
 		for bi,bw in enumerate(self.beamweights):
-			# if bi > 0:
-			# 	break
 			#total weight of cps in beam is 1
 			# convert cumulative weights to relative weights and then absolute weights using bw.
+
 			nbcps = rtplan_dicom.data.BeamSequence[bi].NumberOfControlPoints
 			nsegments = (nbcps-1)
-			# nsegments = 1
+			if firstsegmentonly:
+				nsegments = 1
+				if bi > 0:
+					break
 
 			mlcx_index = None
 			asymy_index = None
@@ -381,6 +384,13 @@ class Engine():
 		assert(isinstance(beamframes,BeamFrame))
 		self.__lasterrorcode__ = self.__gpumcd_object__.execute_beamlets(
 			*c_array_to_pointer(beamframes,True),
+			self.settings.planSettings
+		)
+
+	def execute_segment160s(self,segments):
+		assert(isinstance(segments[0],Segment160))
+		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segment160s(
+			*c_array_to_pointer(segments,True),
 			self.settings.planSettings
 		)
 

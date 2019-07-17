@@ -121,6 +121,16 @@ class Phantom(ctypes.Structure):
 	def nvox(self):
 		return self.numVoxels.x*self.numVoxels.y*self.numVoxels.z
 
+class BeamInformation(ctypes.Structure):
+	_fields_ = [("relativeWeight", ctypes.c_float), ("isoCenter", Float3), ("gantryAngle", Pair), ("couchAngle", Pair), ("collimatorAngle", Pair), ("fieldMin", Pair), ("fieldMax", Pair)]
+
+class BeamFrame(ctypes.Structure):
+	_fields_ = [("numberbeamInfo", ctypes.c_int), ("beamInfo", ctypes.POINTER(BeamInformation))]
+	def __init__(self,numberbeamInfo):
+		self.__beamInfo_data = (BeamInformation * numberbeamInfo)()
+		self.beamInfo = ctypes.cast(self.__beamInfo_data,ctypes.POINTER(BeamInformation))
+		self.numberbeamInfo = numberbeamInfo
+
 class JawInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("j1", Pair), ("j2", Pair)]
 
@@ -135,16 +145,10 @@ class MlcInformation(ctypes.Structure):
 
 class ModifierInformation(ctypes.Structure):
 	_fields_ = [("parallelJaw", JawInformation), ("perpendicularJaw", JawInformation), ("mlc", MlcInformation)]
-
-class BeamInformation(ctypes.Structure):
-	_fields_ = [("relativeWeight", ctypes.c_float), ("isoCenter", Float3), ("gantryAngle", Pair), ("couchAngle", Pair), ("collimatorAngle", Pair), ("fieldMin", Pair), ("fieldMax", Pair)]
+	# def __init__(self,numberLeaves):
+	# 	self.mlc = MlcInformation(numberLeaves)
 
 class Segment(ctypes.Structure):
 	_fields_ = [("collimator", ModifierInformation), ("beamInfo", BeamInformation)]
-
-class BeamFrame(ctypes.Structure):
-	_fields_ = [("numberbeamInfo", ctypes.c_int), ("beamInfo", ctypes.POINTER(BeamInformation))]
-	def __init__(self,numberbeamInfo):
-		self.__beamInfo_data = (BeamInformation * numberbeamInfo)()
-		self.beamInfo = ctypes.cast(self.__beamInfo_data,ctypes.POINTER(BeamInformation))
-		self.numberbeamInfo = numberbeamInfo
+	# def __init__(self,numberLeaves):
+	# 	self.collimator = ModifierInformation(numberLeaves)

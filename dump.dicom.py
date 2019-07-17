@@ -28,7 +28,7 @@ for studyid,v in studies.items():
 				print (eng.lasterror())
 				eng.get_dose(ct_obj.dosemap)
 			ct_obj.dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
-			quit()
+			# quit()
 
 
 
