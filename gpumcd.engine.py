@@ -1,167 +1,31 @@
-import ctypes,numpy as np,os,configparser,argparse
+import image,numpy as np,dicom,glob,collections
+from os import path, makedirs
 import gpumcd
-from os import path
-import image
-import pydicom
 
-parser = argparse.ArgumentParser(description='secret')
-parser.add_argument('dicomdir') #FIXME: or file?
-# parser.add_argument('--nosum',action='store_true')
-args = parser.parse_args()
+casedir = r"d:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
-config = configparser.ConfigParser()
+sett = gpumcd.Settings("d:\\postdoc\\gpumcd_data")
 
+studies = dicom.pydicom_casedir(casedir)
 
+for studyid,v in studies.items():
+	# print ('brent',studyid,'\n')
+	v['ct'].saveas(path.join(casedir,"xdr","ct_dump.xdr"))
+	for sopid,d in v.items():
+		if isinstance(d,dict):
+			d['dose'].saveas(path.join(casedir,"xdr",sopid,"dose_tps.xdr"))
+			ctcpy = v['ct']
+			ctcpy.crop_as(d['dose'])
+			ctcpy.saveas(path.join(casedir,"xdr",sopid,"ct_on_dosegrid.xdr"))
+			ct_obj = gpumcd.CT(sett,ctcpy)
 
+			p=gpumcd.Rtplan(sett, d['plan'])
+			ct_obj.dosemap.zero_out()
 
-
-fname = args.dicomdir
-
-data = pydicom.dcmread(fname,force=True)
-
-print(dir(data.BeamSequence[0].ControlPointSequence[0]))
-
-
-weights_beam_0 = []
-
-#for beam in data.BeamSequence:
-	#i = 0
-	#for cp in beam.ControlPointSequence:
-		##print(i,cp.CumulativeMetersetWeight)
-		#weights_beam_0.append( cp.CumulativeMetersetWeight )
-		#i+=1
-for cp in data.BeamSequence[0].ControlPointSequence:
-	weights_beam_0.append( cp.CumulativeMetersetWeight )
-
-for i in range(len(weights_beam_0)):
-	print(i, '\t', weights_beam_0[i], '\t', end="")
-	try:
-		weights_beam_0[i] = weights_beam_0[i+1] - weights_beam_0[i]
-		print(weights_beam_0[i])
-	except:
-		pass
-
-
-outputdir = "D:\\postdoc\\analyses\\gpumcd_python"
-
-print('Start of program.')
-
-
-materials=["Water"]
-
-physicsSettings = gpumcd.PhysicsSettings()
-planSettings = gpumcd.PlanSettings()
-
-physicsSettings.photonTransportCutoff = 0.01
-physicsSettings.electronTransportCutoff = 0.189
-physicsSettings.inputMaxStepLength = 0.75
-physicsSettings.magneticField = gpumcd.Float3(0,0,0)
-physicsSettings.referenceMedium = -1
-physicsSettings.useElectronInAirSpeedup = 1
-physicsSettings.electronInAirSpeedupDensityThreshold = 0.002
-
-planSettings.goalSfom = 1
-planSettings.statThreshold = 0.5
-planSettings.maxNumParticles = int(1e13)
-planSettings.densityThresholdSfom = 0.2
-planSettings.densityThresholdOutput = 0.0472
-planSettings.useApproximateStatistics = 1
-
-phantom = gpumcd.Phantom(50*50*50)
-phantom.numVoxels.x = 50
-phantom.numVoxels.y = 50
-phantom.numVoxels.z = 50
-
-phantom.voxelSizes.x = 0.2
-phantom.voxelSizes.y = 0.2
-phantom.voxelSizes.z = 0.2
-
-phantom.phantomCorner.x = -5.0
-phantom.phantomCorner.y = -5.0
-phantom.phantomCorner.z = -5.0
-
-nvox = phantom.numVoxels.x*phantom.numVoxels.y*phantom.numVoxels.z
-for i in range(nvox):
-	phantom.massDensityArray[i]=1
-	phantom.mediumIndexArray[i]=0
-
-lasterror=ctypes.create_string_buffer(1000)
-
-print('Scene definition loaded.')
-
-Engine = gpumcd.Gpumcd()
-#libgpumcd = ctypes.CDLL(path.join(rootdir,"libgpumcd.dll"))
-
-print('libgpumcd loaded, starting gpumcd init...')
-
-max_streams = np.floor(Engine.get_available_vram(0)/Engine.estimate_vram_consumption(nvox))
-n_streams = min(max_streams,3)
-# print(n_streams)
-# quit()
-
-## TODO libgpumcd.initGpumcd.argtypes = ([c_char_p, c_int, c_char_p] etc etc
-
-print(type(ctypes.byref(lasterror)))
-
-retval = Engine.init(
-	0,
-	0,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/materials_clin"),
-	*gpumcd.strlist2charpp(materials),
-	physicsSettings,
-	phantom,
-	gpumcd.str2charp("D:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
-	n_streams,
-	ctypes.byref(lasterror)
-)
-
-print('gpumcd init done.')
-
-print(retval,lasterror.value.decode('utf-8'))
-
-BeamFrames = gpumcd.make_c_array(gpumcd.BeamFrame,2)
-BeamFrames[0]=gpumcd.BeamFrame(1)
-BeamFrames[0].beamInfo[0].relativeWeight = 100
-BeamFrames[0].beamInfo[0].isoCenter.x=0
-BeamFrames[0].beamInfo[0].isoCenter.y=0
-BeamFrames[0].beamInfo[0].isoCenter.z=0
-BeamFrames[0].beamInfo[0].collimatorAngle.first=0
-BeamFrames[0].beamInfo[0].collimatorAngle.second=0
-BeamFrames[0].beamInfo[0].couchAngle.first=0
-BeamFrames[0].beamInfo[0].couchAngle.second=0
-BeamFrames[0].beamInfo[0].gantryAngle.first=0
-BeamFrames[0].beamInfo[0].gantryAngle.second=0
-BeamFrames[0].beamInfo[0].fieldMax.first=2
-BeamFrames[0].beamInfo[0].fieldMax.second=2
-BeamFrames[0].beamInfo[0].fieldMin.first=-2
-BeamFrames[0].beamInfo[0].fieldMin.second=-2
-BeamFrames[1]=gpumcd.BeamFrame(1)
-BeamFrames[1].beamInfo[0].relativeWeight = 100
-BeamFrames[1].beamInfo[0].isoCenter.x=0
-BeamFrames[1].beamInfo[0].isoCenter.y=0
-BeamFrames[1].beamInfo[0].isoCenter.z=0
-BeamFrames[1].beamInfo[0].collimatorAngle.first=0
-BeamFrames[1].beamInfo[0].collimatorAngle.second=0
-BeamFrames[1].beamInfo[0].couchAngle.first=0
-BeamFrames[1].beamInfo[0].couchAngle.second=0
-BeamFrames[1].beamInfo[0].gantryAngle.first=90
-BeamFrames[1].beamInfo[0].gantryAngle.second=90
-BeamFrames[1].beamInfo[0].fieldMax.first=1
-BeamFrames[1].beamInfo[0].fieldMax.second=1
-BeamFrames[1].beamInfo[0].fieldMin.first=-1
-BeamFrames[1].beamInfo[0].fieldMin.second=-1
-
-print('executing simulation...')
-
-retval = Engine.execute_beamlets(
-	*gpumcd.c_array_to_pointer(BeamFrames,True),
-	planSettings
-)
-
-print(retval)
-
-dose = image.image(DimSize=[50,50,50], ElementSpacing=[0.2,0.2,0.2], dt='<f4')
-
-Engine.get_dose(dose.get_ctypes_pointer_to_data())
-
-dose.saveas(path.join(outputdir,'dose.xdr'))
+			for i,beam in enumerate(p.beams):
+				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
+				eng.execute_segments(beam)
+				print (eng.lasterror())
+				eng.get_dose(ct_obj.dosemap)
+			ct_obj.dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))
+			quit()

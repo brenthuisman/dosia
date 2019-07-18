@@ -387,13 +387,6 @@ class Engine():
 			self.settings.planSettings
 		)
 
-	def execute_segment160s(self,segments):
-		assert(isinstance(segments[0],Segment160))
-		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segment160s(
-			*c_array_to_pointer(segments,True),
-			self.settings.planSettings
-		)
-
 	def execute_segments(self,segments):
 		assert(isinstance(segments[0],Segment))
 		self.__lasterrorcode__ = self.__gpumcd_object__.execute_segments(
@@ -410,9 +403,8 @@ class Engine():
 		assert(self.ct.phantom.nvox() == dosemap.nvox())
 		newdose = image.image(DimSize=dosemap.header['DimSize'], ElementSpacing=dosemap.header['ElementSpacing'], Offset=dosemap.header['Offset'], dt='<f4')
 		self.__gpumcd_object__.get_dose(newdose.get_ctypes_pointer_to_data())
-		indata = np.asarray(newdose.imdata, order='F')
-		indata = indata.reshape(tuple(reversed(indata.shape))).swapaxes(0, len(indata.shape) - 1)
-		self.ct.dosemap.imdata += indata
+		newdose.imdata = np.asarray(newdose.imdata, order='F').reshape(tuple(reversed(newdose.imdata.shape))).swapaxes(0, len(newdose.imdata.shape) - 1)
+		dosemap.add(newdose)
 
 
 class __gpumcd__():

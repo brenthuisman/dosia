@@ -30,8 +30,7 @@ class pydicom_object():
 		elif self.modality == "RTPLAN":
 			self.sopid = self.data.SOPInstanceUID
 
-def pydicom_casedir(dname):#,settings):
-	#assert(isinstance(settings,gpumcd.Settings))
+def pydicom_casedir(dname,loadimages=True):
 	ct_dirs = glob.glob(path.join(dname,"*PLAN"))
 	upi_dirs = glob.glob(path.join(dname,"*UPI*"))
 
@@ -40,9 +39,12 @@ def pydicom_casedir(dname):#,settings):
 	for ct_dir in ct_dirs:
 		a = pydicom_object(ct_dir)
 		if a.modality == 'CT':
-			studies[a.studyid]['ct'] = image.image(ct_dir)
-			#seems that the images is already in HU units
-			studies[a.studyid]['ct'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
+			if loadimages:
+				studies[a.studyid]['ct'] = image.image(ct_dir)
+				#seems that the images is already in HU units
+				studies[a.studyid]['ct'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
+			else:
+				studies[a.studyid]['ct'] = a
 		else:
 			IOError("Expected CT image, but",a.modality,"was found.")
 
@@ -55,7 +57,18 @@ def pydicom_casedir(dname):#,settings):
 			except:
 				studies[a.studyid][a.sopid]={}
 			if a.modality == "RTDOSE":
-				studies[a.studyid][a.sopid]['dose'] = image.image(f)
+				if loadimages:
+					# gonna perform a few checks in order to understand the amount of dose
+					if str(a.data.DoseUnits) != "GY":
+						raise NotImplementedError("The provided dicom dose image has relative units.")
+					if str(a.data.DoseType) != "PHYSICAL":
+						raise NotImplementedError("The provided dicom dose image is not in physical units.")
+					if str(a.data.DoseSummationType) not in ["PLAN","FRACTION"]:
+						raise NotImplementedError("")
+					studies[a.studyid][a.sopid]['dose'] = image.image(f)
+					studies[a.studyid][a.sopid]['dose'].mul(a.data.DoseGridScaling)
+				else:
+					studies[a.studyid][a.sopid]['dose'] = a
 			elif a.modality == "RTPLAN":
 				studies[a.studyid][a.sopid]['plan'] = a
 			else:

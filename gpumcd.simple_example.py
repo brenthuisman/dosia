@@ -3,7 +3,7 @@ import gpumcd
 from os import path
 import image
 
-outputdir = "c:\\postdoc\\analyses\\gpumcd_python"
+outputdir = "d:\\postdoc\\analyses\\gpumcd_python"
 
 print('Start of program.')
 
@@ -50,7 +50,7 @@ lasterror=ctypes.create_string_buffer(1000)
 
 print('Scene definition loaded.')
 
-Engine = gpumcd.__gpumcd__("c:/postdoc/gpumcd_data/dll")
+Engine = gpumcd.__gpumcd__("d:/postdoc/gpumcd_data/dll")
 
 print('libgpumcd loaded, starting gpumcd init...')
 
@@ -62,11 +62,11 @@ n_streams = 1
 retval = Engine.init(
 	0,
 	0,
-	gpumcd.str2charp("c:/postdoc/gpumcd_data/materials_clin"),
+	gpumcd.str2charp("d:/postdoc/gpumcd_data/materials_clin"),
 	*gpumcd.strlist2charpp(materials),
 	physicsSettings,
 	phantom,
-	gpumcd.str2charp("c:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
+	gpumcd.str2charp("d:/postdoc/gpumcd_data/machines/machine_van_sami/brentAgility.beamlets.gpumdt"),
 	n_streams,
 	ctypes.byref(lasterror)
 )
