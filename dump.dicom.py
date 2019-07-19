@@ -14,8 +14,10 @@ for dirr in glob.glob(casedir+"/*/*"):
 				try:
 					# print(d['dose'].data.DoseUnits)
 					# print(d['dose'].data.DoseType)
-					print(d['dose'].data.DoseSummationType)
+					# print(d['dose'].data.DoseSummationType)
 					# print(d['dose'].data.DoseGridScaling)
+					print(d['plan'].BeamDoseSpecificationPoint)
+					print(d['plan'].BeamDose)
 				except KeyError:
 					print ("there was no dose in",dirr,studyid,sopid)
 

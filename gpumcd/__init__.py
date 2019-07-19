@@ -115,8 +115,6 @@ class Settings():
 			print("You provided nonexisting GPUMCD directories.")
 
 
-
-
 class CT():
 	def __init__(self,settings,ct_image): #,intercept=0,slope=1):
 		'''
@@ -221,7 +219,7 @@ class Rtplan():
 			print(self.accelerator)
 
 		self.beamweights = []
-		for b in range(rtplan_dicom.data.FractionGroupSequence[0].NumberOfBeams):
+		for b in range(rtplan_dicom.NumberOfBeams):
 			#theres only 1 fractiongroup
 			self.beamweights.append(float(rtplan_dicom.data.FractionGroupSequence[0].ReferencedBeamSequence[b].BeamMeterset))
 
