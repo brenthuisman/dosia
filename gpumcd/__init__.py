@@ -282,18 +282,34 @@ class Rtplan():
 				# MLCX
 				mlcx_r = []
 				mlcx_l = []
-				for l in range(self.accelerator.leafs_per_bank):
-					# leftleaves: eerste helft.
-					lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
-					rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
-					lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
-					rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
+				try:
+					for l in range(self.accelerator.leafs_per_bank):
+						# leftleaves: eerste helft.
+						lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+						rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
+						lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+						rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
 
-					self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
-					self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
+						self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
+						self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
 
-					mlcx_r.extend([rval,rval_next])
-					mlcx_l.extend([lval,lval_next])
+						mlcx_r.extend([rval,rval_next])
+						mlcx_l.extend([lval,lval_next])
+				except Exception as e:# IndexError as e:
+					print(f"There was an parsing this RTPlan, aborting...")
+					if sett.debug['verbose']>0:
+						print(self.accelerator)
+						print(f"Filename: {rtplan_dicom.filename}")
+						print(f"Beamindex: {bi}")
+						print(f"controlpointindex: {cpi}")
+						print(f"mlcx_index: {mlcx_index}")
+						print(cp_this)
+						print(dir(cp_this))
+						print(cp_next)
+						print(dir(cp_next))
+						print(e)
+					raise e
+
 
 				# prep for field extremeties
 				self.beams[bi][cpi].beamInfo.fieldMin = Pair()

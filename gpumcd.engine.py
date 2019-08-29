@@ -32,7 +32,8 @@ for studyid,v in studies.items():
 			for i,beam in enumerate(p.beams):
 				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
 				eng.execute_segments(beam)
-				print (eng.lasterror())
+				if eng.lasterror()[0] != 0:
+					print (eng.lasterror())
 				eng.get_dose(ct_obj.dosemap)
 
 			if gpumcd_factor:

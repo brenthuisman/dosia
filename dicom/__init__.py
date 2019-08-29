@@ -35,19 +35,24 @@ class pydicom_object():
 			self.NumberOfBeams = int(self.data.FractionGroupSequence[0].NumberOfBeams)
 
 			# sum BeamDoses if all in the same point as secondary check for amount of dose to expect in tps dose. BeamDose is specified as per fraction
-			self.BeamDoseSpecificationPoint = self.data.FractionGroupSequence[0].ReferencedBeamSequence[0].BeamDoseSpecificationPoint
-			self.BeamDose = self.data.FractionGroupSequence[0].ReferencedBeamSequence[0].BeamDose
-			for beam in self.data.FractionGroupSequence[0].ReferencedBeamSequence[1:]:
-				if self.BeamDoseSpecificationPoint == beam.BeamDoseSpecificationPoint:
-					self.BeamDose += beam.BeamDose
-				else:
-					self.BeamDoseSpecificationPoint = None
-					self.BeamDose = None
-			if self.BeamDoseSpecificationPoint != None:
-				self.BeamDoseSpecificationPoint = [x*0.1 for x in self.BeamDoseSpecificationPoint] #to cm
+			try:
+				self.BeamDoseSpecificationPoint = self.data.FractionGroupSequence[0].ReferencedBeamSequence[0].BeamDoseSpecificationPoint
+				self.BeamDose = self.data.FractionGroupSequence[0].ReferencedBeamSequence[0].BeamDose
+				for beam in self.data.FractionGroupSequence[0].ReferencedBeamSequence[1:]:
+					if self.BeamDoseSpecificationPoint == beam.BeamDoseSpecificationPoint:
+						self.BeamDose += beam.BeamDose
+					else:
+						self.BeamDoseSpecificationPoint = None
+						self.BeamDose = None
+				if self.BeamDoseSpecificationPoint != None:
+					self.BeamDoseSpecificationPoint = [x*0.1 for x in self.BeamDoseSpecificationPoint] #to cm
+			except AttributeError:
+				# plan base no beamdosespec
+				self.BeamDoseSpecificationPoint = None
+				self.BeamDose = None
 
 def pydicom_casedir(dname,loadimages=True):
-	ct_dirs = glob.glob(path.join(dname,"*PLAN"))
+	ct_dirs = glob.glob(path.join(dname,"*PLAN*"))
 	upi_dirs = glob.glob(path.join(dname,"*UPI*"))
 
 	studies = collections.defaultdict(dict)
@@ -92,3 +97,43 @@ def pydicom_casedir(dname,loadimages=True):
 
 	return studies
 
+def run_casedir(sett,casedir,v):
+	for sopid,d in v.items():
+		if isinstance(d,dict):
+			gpumcd_factor = False
+			try:
+				tpsdosespecpt = d['dose_im'].get_value(d['plan'].BeamDoseSpecificationPoint)
+				assert(d['plan'].BeamDose*0.9 < tpsdosespecpt < d['plan'].BeamDose*1.1)
+			except:
+				print("TPS dose it outside of expected planned dose per fraction in beamdosespecificationpoint. Your TPS probably exported the PLAN dose instead of FRACTION dose, GPUMCD dose will be multiplied with the number of fractions.")
+				gpumcd_factor = True
+			d['dose_im'].saveas(path.join(casedir,"xdr",sopid,"dose_tps.xdr"))
+			ctcpy = v['ct_im']
+			ctcpy.crop_as(d['dose_im'])
+			ctcpy.saveas(path.join(casedir,"xdr",sopid,"ct_on_dosegrid.xdr"))
+			ct_obj = gpumcd.CT(sett,ctcpy)
+
+			try:
+				p=gpumcd.Rtplan(sett, d['plan'])
+			except:
+				print("Invalid plan found:",d['plan'].filename,"Skipping...")
+				continue
+			ct_obj.dosemap.zero_out()
+
+			for beam in p.beams:
+				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
+				eng.execute_segments(beam)
+				print (eng.lasterror())
+				eng.get_dose(ct_obj.dosemap)
+
+			if gpumcd_factor:
+				ct_obj.dosemap.mul(d['plan'].NumberOfFractionsPlanned)
+			else:
+				# From what I've seen, dosemaps are exported per plan REGARDLESS of value of DoseSummationType. we try anyway.
+				if d['dose'].DoseSummationType == 'PLAN':
+					print("Dose was computed for whole PLAN, multiplying GPUMCD dose with number of fractions.")
+					ct_obj.dosemap.mul(d['plan'].NumberOfFractionsPlanned)
+				else:
+					assert d['dose'].DoseSummationType == 'FRACTION'
+
+			ct_obj.dosemap.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))

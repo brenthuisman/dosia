@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import Scale #new one sucks
-from tkinter import filedialog #old one dont work
+from tkinter import filedialog #new one dont work
 
 class CreateToolTip(object):
 	"""
