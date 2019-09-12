@@ -1,58 +1,54 @@
-from tkinter import *
-from tkinter.ttk import *
-from tkinter import Scale #new one sucks
-from tkinter import filedialog #new one dont work
 
-class CreateToolTip(object):
-	"""
-	create a tooltip for a given widget.
-	Copied from https://stackoverflow.com/a/36221216
-	"""
-	def __init__(self, widget, text='widget info'):
-		self.waittime = 500     #milliseconds
-		self.wraplength = 250   #pixels
-		self.widget = widget
-		self.text = text
-		self.widget.bind("<Enter>", self.enter)
-		self.widget.bind("<Leave>", self.leave)
-		self.widget.bind("<ButtonPress>", self.leave)
-		self.id = None
-		self.tw = None
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
+from PyQt5.QtCore import Qt,QSize
 
-	def enter(self, event=None):
-		self.schedule()
+class BSlider(QWidget):
+	def __init__(self, title, minval, maxval, slot=None, defval=0, orientation=Qt.Horizontal, parent=None):
+		super().__init__(parent)
 
-	def leave(self, event=None):
-		self.unschedule()
-		self.hidetip()
+		self.value = defval
 
-	def schedule(self):
-		self.unschedule()
-		self.id = self.widget.after(self.waittime, self.showtip)
+		self.slider = QSlider(orientation,self)
+		self.slider.setTickPosition(QSlider.TicksBelow)
+		self.slider.setValue(defval)
+		self.slider.valueChanged[int].connect(self.changeValue)
+		if slot != None:
+			self.slider.valueChanged[int].connect(slot)
 
-	def unschedule(self):
-		id = self.id
-		self.id = None
-		if id:
-			self.widget.after_cancel(id)
+		self.title = QLabel(title,self)
 
-	def showtip(self, event=None):
-		x = y = 0
-		x, y, cx, cy = self.widget.bbox("insert")
-		x += self.widget.winfo_rootx() + 25
-		y += self.widget.winfo_rooty() + 20
-		# creates a toplevel window
-		self.tw = Toplevel(self.widget)
-		# Leaves only the label and removes the app window
-		self.tw.wm_overrideredirect(True)
-		self.tw.wm_geometry("+%d+%d" % (x, y))
-		label = Label(self.tw, text=self.text, justify='left',
-					background="#ffffff", relief='solid', borderwidth=1,
-					wraplength = self.wraplength)
-		label.pack(ipadx=1)
+		if isinstance(minval, str):
+			# assume this is a switch with just two values.
+			self.slider.setMinimum(0)
+			self.slider.setMaximum(1)
+			t = QHBoxLayout()
+			t.setContentsMargins(0, 0, 0, 0)
+			t.addWidget(QLabel(minval,self))
+			t.addStretch(1)
+			t.addWidget(QLabel(maxval,self))
+		else:
+			self.slider.setMinimum(minval)
+			self.slider.setMaximum(maxval)
+			self.vallabel = QLabel(str(defval),self)
+			self.vallabel.setAlignment(Qt.AlignCenter)
 
-	def hidetip(self):
-		tw = self.tw
-		self.tw= None
-		if tw:
-			tw.destroy()
+		l = QVBoxLayout()
+		l.setContentsMargins(0, 0, 0, 0)
+		l.addWidget(self.title)
+		l.addWidget(self.slider)
+		if isinstance(minval, str):
+			l.addLayout(t)
+		else:
+			l.addWidget(self.vallabel)
+
+		self.setLayout(l)
+
+	def changeValue(self,v):
+		self.value = v
+		# print(self.title.text(),v)
+		try:
+			self.vallabel.setText(str(v))
+		except:
+			pass
+

@@ -198,6 +198,20 @@ class image(math_class,mask_class):
 		return profiles
 
 
+	def get_slices_at_index(self,idx=None):
+		''' Returns the prependicular slices through an index. '''
+		if idx==None:
+			idx=[int(i/2.) for i in self.imdata.shape]
+		assert len(idx)==len(self.imdata.shape)
+
+		profiles = []
+
+		for axi in range(len(self.imdata.shape)):
+			profile = np.moveaxis(self.imdata,axi,0)[idx[axi]]
+			profiles.append(profile)
+		return profiles #actually,slices
+
+
 	def get_ctypes_pointer_to_data(self):
 		#https://stackoverflow.com/questions/33247262/the-corresponding-ctypes-type-of-a-numpy-dtype
 		import ctypes
