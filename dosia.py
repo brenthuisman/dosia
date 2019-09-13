@@ -13,23 +13,36 @@ class CTWidget(QWidget):
 		opendicomobject = dicom.pydicom_object(fname)
 		if opendicomobject.modality == "CT":
 			ct = image.image(fname)
-			ct.ct_to_hu(opendicomobject.RescaleIntercept,opendicomobject.RescaleSlope)
 		else:
 			IOError("That aint no dicom ct!")
 		# self.ct = gpumcd.CT(sett,ct)
 
 		x,y,z=ct.get_slices_at_index()
+		print(x.max(),x.min())
 		print(x.shape,y.shape,z.shape)
+		x=x+100
+		import scipy.misc
+		scipy.misc.imsave("d:/slicex.png",x)
+		scipy.misc.imsave("d:/slicey.png",y)
+		scipy.misc.imsave("d:/slicez.png",z)
+		# x=x.astype(np.uint16)#+x.min()
+		# scipy.misc.imsave("d:/slice2.png",np.rot90(x))
+		# print(x.max(),x.min())
+		im=np.uint8(x)#require(x, np.uint8, 'C')
+		print(im.shape[1],im.shape[0])
+		print(x.shape[1],x.shape[0])
+		self.qimage = QImage(im,im.shape[1],im.shape[0],QImage.Format_Grayscale8)
 
-		self.qimage = QImage(x, x.shape[0],x.shape[1],QImage.Format_Grayscale16)
-		# for dose: Format_RGB32
-		# painter = QPainter(self)
-		# painter.drawPixmap(self.rect(), QPixmap(qimage))
+		self.im=im
 
 
 	def paintEvent(self,e):
 		painter = QPainter(self)
 		painter.drawPixmap(self.rect(), QPixmap(self.qimage))
+		# i=image.image(DimSize=[1,1],ElementSpacing=[1,1])
+		# a=QPixmap()
+		# a.loadFromData(i.get_ctypes_pointer_to_data(self.im))
+		# painter.drawPixmap(self.rect(), QPixmap(a))
 
 	def minimumSizeHint(self):
 		return QSize(200, 200)
@@ -40,7 +53,7 @@ class PlanWidget(QWidget):
 		super().__init__(*args,**kwargs)
 
 		opendicomobject = dicom.pydicom_object(fname)
-		if opendicomobject.modality == "CT":
+		if opendicomobject.modality == "RTPLAN":
 			self.plan = gpumcd.Rtplan(sett,opendicomobject)
 		else:
 			IOError("That aint no dicom plan, mister!")
@@ -98,9 +111,6 @@ class PlanCanvas(QWidget):
 		self.si = 0
 		self.bi = 0
 		self.be = 0
-		# self.resize(100,100)#self.sizeHint())
-		print(self.width(),self.height())
-		# self.ensurePolished()
 
 	def setFrame(self, bi, si ,be):
 		self.si = si
@@ -266,7 +276,7 @@ class DosiaMain(QMainWindow):
 	def setct(self):
 		# fname = str(QFileDialog.getOpenFileName(self, 'Open CT Dicom')[0])
 		fname = str(QFileDialog.getExistingDirectory(self, 'Open CT Dicom'))
-		self.topleft = CTWidget(fname)
+		self.topright = CTWidget(fname)
 		self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
 
 
@@ -281,7 +291,11 @@ if __name__ == '__main__':
 	# p=PlanWidget(gpumcd.Rtplan(gpumcd.Settings(),opendicomobject))
 	# p.show()
 
+	fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
+	p=CTWidget(fname)
+	p.show()
 
 
-	Main = DosiaMain()
+
+	# Main = DosiaMain()
 	sys.exit(app.exec())

@@ -65,7 +65,7 @@ def pydicom_casedir(dname,loadimages=True):
 				if a.PatientPosition != 'HFS':
 					raise NotImplementedError("Patient (Dose) is not in HFS position.")
 				studies[a.studyid]['ct_im'] = image.image(ct_dir)
-				studies[a.studyid]['ct_im'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
+				# studies[a.studyid]['ct_im'].ct_to_hu(a.RescaleIntercept,a.RescaleSlope)
 		else:
 			IOError("Expected CT image, but",a.modality,"was found.")
 
