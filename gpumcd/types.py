@@ -1,6 +1,6 @@
 import ctypes,operator,numpy as np
 from functools import reduce
-import image
+import medimage as image
 
 class ModifierOrientation(ctypes.Structure):
 	'''

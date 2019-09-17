@@ -1,6 +1,6 @@
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
+from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap, QIcon
 from PyQt5.QtCore import Qt,QSize
 
 class BSlider(QWidget):

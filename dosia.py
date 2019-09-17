@@ -1,40 +1,25 @@
 #!/usr/bin/python3
 
-import dicom, gpumcd, image, numpy as np
+import medimage as image, dicom, gpumcd, numpy as np
 from gui import *
 
-# todo: load this from an ini?
+# todo: load this from an ini? gui setting?
 sett = gpumcd.Settings("d:\\postdoc\\gpumcd_data")
 
-class CTWidget(QWidget):
+class ImagePane(QWidget):
 	def __init__(self, fname, *args,**kwargs):
 		super().__init__(*args,**kwargs)
 
-		opendicomobject = dicom.pydicom_object(fname)
-		if opendicomobject.modality == "CT":
-			ct = image.image(fname)
-		else:
-			IOError("That aint no dicom ct!")
-		# self.ct = gpumcd.CT(sett,ct)
+		self.image = image.image(fname)
 
-		x,y,z=ct.get_slices_at_index()
-		print(x.max(),x.min())
-		print(x.shape,y.shape,z.shape)
-		x=x+100
-		import scipy.misc
-		scipy.misc.imsave("d:/slicex.png",x)
-		scipy.misc.imsave("d:/slicey.png",y)
-		scipy.misc.imsave("d:/slicez.png",z)
-		# x=x.astype(np.uint16)#+x.min()
-		# scipy.misc.imsave("d:/slice2.png",np.rot90(x))
-		# print(x.max(),x.min())
-		im=np.uint8(x)#require(x, np.uint8, 'C')
-		print(im.shape[1],im.shape[0])
-		print(x.shape[1],x.shape[0])
+		x,y,z=self.image.get_slices_at_index()
+		# import scipy.misc
+		# scipy.misc.imsave("d:/slicex.png",x)
+		# scipy.misc.imsave("d:/slicey.png",y)
+		# scipy.misc.imsave("d:/slicez.png",z)
+		x=np.interp(x, (x.min(), x.max()), (0, 255))
+		im = np.copy(np.rot90(np.rot90(np.uint8(x).T)),order='C')
 		self.qimage = QImage(im,im.shape[1],im.shape[0],QImage.Format_Grayscale8)
-
-		self.im=im
-
 
 	def paintEvent(self,e):
 		painter = QPainter(self)
@@ -48,7 +33,7 @@ class CTWidget(QWidget):
 		return QSize(200, 200)
 
 
-class PlanWidget(QWidget):
+class PlanPane(QWidget):
 	def __init__(self, fname, *args,**kwargs):
 		super().__init__(*args,**kwargs)
 
@@ -133,7 +118,7 @@ class PlanCanvas(QWidget):
 			attr="first"
 		w=self.width()#/800
 		h=self.height()#/800
-		print(w,h)
+		# print(w,h)
 
 		qp = QPainter()
 		qp.begin(self)
@@ -243,24 +228,43 @@ class DosiaMain(QMainWindow):
 		self.setWindowTitle("Dosia")
 		self.resize(800, 800)
 		self.move(300, 300)
+		self.setWindowIcon(QIcon('gui/audio-card.svg'))
 
 		# Menu bar
-		planOpen = QAction('&Plan', self)
-		planOpen.triggered.connect(self.setplan)
-		ctOpen = QAction('&CT', self)
-		ctOpen.triggered.connect(self.setct)
+		menu_open_plan = QAction('&RT Plan', self)
+		menu_open_plan.triggered.connect(self.setplan)
+		menu_open_ct = QAction('&Plan CT', self)
+		menu_open_ct.triggered.connect(self.setct)
+		menu_open_dose = QAction('&Plan Dose', self)
+		menu_open_dose.triggered.connect(self.setdose)
+		menu_open_linaclog = QAction('&Linac Log', self)
+		menu_open_linaclog.triggered.connect(self.setlinaclog)
+		menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
 
-		menubar = self.menuBar()
-		fileMenu = menubar.addMenu('&Open')
-		fileMenu.addAction(planOpen)
-		fileMenu.addAction(ctOpen)
+		menu_gpumcd_calculate = QAction('&Calculate Dose', self)
+		menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
+		menu_gpumcd_calculate.setDisabled(True) #TODO: enable if rtplan and ct loaded
+		menu_gpumcd_save = QAction('&Save Dose', self)
+		menu_gpumcd_save.triggered.connect(self.savegpumcd)
+		menu_gpumcd_save.setDisabled(True) #TODO: enable if gpumcd dose calculated.
 
-		# Qudrants
-		self.topleft = QWidget()
-		self.topright = QWidget()
-		self.bottomleft = QWidget()
-		self.bottomright = QWidget()
-		self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
+		menu_bar = self.menuBar()
+		menu_open = menu_bar.addMenu('&Open')
+		menu_open.addAction(menu_open_plan)
+		menu_open.addAction(menu_open_ct)
+		menu_open.addAction(menu_open_dose)
+		menu_open.addAction(menu_open_linaclog)
+
+		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
+		menu_gpumcd.addAction(menu_gpumcd_calculate)
+		menu_gpumcd.addAction(menu_gpumcd_save)
+
+		# Quadrants
+		self.planpane = QWidget()
+		self.plandosepane = QWidget()
+		self.ctpane = QWidget()
+		self.gpumcdpane = QWidget()
+		self.resetpanes()
 
 		# statusbar
 		self.statusBar().showMessage('Ready')
@@ -268,16 +272,64 @@ class DosiaMain(QMainWindow):
 		# done!
 		self.show()
 
+	def resetpanes(self):
+		self.setCentralWidget(FourPanel(self.planpane,self.plandosepane,self.ctpane,self.gpumcdpane))
+
+	#TODO: error handling in loading files
+
+	def setcase(self):
+		# TODO: open dir and search for rtplan,ct,dose and set panes accordingly.
+		# multiple rtplan selector?
+		pass
+
 	def setplan(self):
-		fname = str(QFileDialog.getOpenFileName(self, 'Open Plan Dicom')[0])
-		self.topleft = PlanWidget(fname)
-		self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
+		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Plan')[0])
+		self.planpane = PlanPane(fname)
+		self.resetpanes()
 
 	def setct(self):
 		# fname = str(QFileDialog.getOpenFileName(self, 'Open CT Dicom')[0])
-		fname = str(QFileDialog.getExistingDirectory(self, 'Open CT Dicom'))
-		self.topright = CTWidget(fname)
-		self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
+		fname = str(QFileDialog.getExistingDirectory(self, 'Open Dicom CT'))
+		try:
+			opendicomobject = dicom.pydicom_object(fname)
+			assert opendicomobject.modality == "CT"
+		except:
+			IOError("That aint no dicom ct!")
+			return
+		self.ctpane = ImagePane(fname)
+		self.resetpanes()
+
+	def setdose(self):
+		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
+		try:
+			opendicomobject = dicom.pydicom_object(fname)
+			assert opendicomobject.modality == "RTDOSE"
+			assert str(a.data.DoseUnits) == "GY"
+			assert str(a.data.DoseType) == "PHYSICAL"
+			assert str(a.data.DoseSummationType) in ["PLAN","FRACTION"]
+		except:
+			IOError("That was not a valid plan.")
+			return
+		self.plandosepane = ImagePane(fname)
+		self.resetpanes()
+
+	def setlinaclog(self):
+		# fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
+		# self.topleft = QWidget()#somewidget(fname)
+		self.resetpanes()
+
+	def calcgpumcd(self):
+		# fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
+		# self.topleft = QWidget()#somewidget(fname)
+		self.resetpanes()
+		pass
+
+	def savegpumcd(self):
+		fname = str(QFileDialog.getSaveFileName(self, 'Save GPUMCD Dose')[0])
+		self.gpumcdpane.save(fname)
+		# self.topleft = QWidget()#somewidget(fname)
+		# self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
+		pass
 
 
 if __name__ == '__main__':
@@ -285,17 +337,19 @@ if __name__ == '__main__':
 
 	app = QApplication(sys.argv)
 
-
+	# TEST PLAN VIEWER
 	# fname="D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.1025001435024675917588954042793107482"
 	# opendicomobject = dicom.pydicom_object(fname)
-	# p=PlanWidget(gpumcd.Rtplan(gpumcd.Settings(),opendicomobject))
+	# p=PlanPane(gpumcd.Rtplan(gpumcd.Settings(),opendicomobject))
 	# p.show()
 
-	fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
-	p=CTWidget(fname)
-	p.show()
+	# TEST CT VIEWER
+	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
+	# p=ImagePane(fname)
+	# p.show()
 
 
+	# TEST MAIN
+	Main = DosiaMain()
 
-	# Main = DosiaMain()
 	sys.exit(app.exec())

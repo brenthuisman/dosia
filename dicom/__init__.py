@@ -1,4 +1,4 @@
-import image,gpumcd,numpy as np,pydicom,glob,collections
+import medimage as image,gpumcd,numpy as np,pydicom,glob,collections
 from os import path
 
 class pydicom_object():

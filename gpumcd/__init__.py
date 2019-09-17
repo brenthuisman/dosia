@@ -1,4 +1,4 @@
-import ctypes,os,configparser,image,dicom
+import ctypes,os,configparser,medimage as image,dicom
 from os import path
 from .types import *
 from .ctypes_helpers import *
