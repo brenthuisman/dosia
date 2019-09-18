@@ -27,10 +27,16 @@ class pydicom_object():
 			self.RescaleSlope = float(self.data.RescaleSlope)
 		elif self.modality == "RTDOSE":
 			self.sopid = str(self.data.ReferencedRTPlanSequence[0].ReferencedSOPInstanceUID)
+			self.DoseUnits = str(self.data.DoseUnits)
+			self.DoseType = str(self.data.DoseType)
 			self.DoseSummationType = str(self.data.DoseSummationType)
+			assert self.DoseUnits == "GY", "This dose image is not in GY units."
+			assert self.DoseType == "PHYSICAL", "This dose image is not physical dose."
+			assert self.DoseSummationType in ["PLAN","FRACTION"], "This dose image is not per plan or fraction."
 		elif self.modality == "RTPLAN":
 			self.sopid = str(self.data.SOPInstanceUID)
 			self.PatientPosition = str(self.data.PatientSetupSequence[0].PatientPosition)
+			assert self.PatientPosition == 'HFS', "Patient (Plan) is not in HFS position."
 			self.NumberOfFractionsPlanned = int(self.data.FractionGroupSequence[0].NumberOfFractionsPlanned)
 			self.NumberOfBeams = int(self.data.FractionGroupSequence[0].NumberOfBeams)
 
@@ -50,6 +56,7 @@ class pydicom_object():
 				# plan base no beamdosespec
 				self.BeamDoseSpecificationPoint = None
 				self.BeamDose = None
+
 
 def pydicom_casedir(dname,loadimages=True):
 	ct_dirs = glob.glob(path.join(dname,"*PLAN*"))
@@ -80,18 +87,18 @@ def pydicom_casedir(dname,loadimages=True):
 			if a.modality == "RTDOSE":
 				studies[a.studyid][a.sopid]['dose'] = a
 				if loadimages:
-					if str(a.data.DoseUnits) != "GY":
-						raise NotImplementedError("The provided dicom dose image has relative units.")
-					if str(a.data.DoseType) != "PHYSICAL":
-						raise NotImplementedError("The provided dicom dose image is not in physical units.")
-					if str(a.data.DoseSummationType) not in ["PLAN","FRACTION"]:
-						raise NotImplementedError("Dose was not computed for 'PLAN' or 'FRACTION'.")
+					# if str(a.data.DoseUnits) != "GY":
+					# 	raise NotImplementedError("The provided dicom dose image has relative units.")
+					# if str(a.data.DoseType) != "PHYSICAL":
+					# 	raise NotImplementedError("The provided dicom dose image is not in physical units.")
+					# if str(a.data.DoseSummationType) not in ["PLAN","FRACTION"]:
+					# 	raise NotImplementedError("Dose was not computed for 'PLAN' or 'FRACTION'.")
 					studies[a.studyid][a.sopid]['dose_im'] = image.image(f)
 					studies[a.studyid][a.sopid]['dose_im'].mul(a.data.DoseGridScaling)
 			elif a.modality == "RTPLAN":
 				studies[a.studyid][a.sopid]['plan'] = a
-				if loadimages and a.PatientPosition != 'HFS':
-					raise NotImplementedError("Patient (Plan) is not in HFS position.")
+				# if loadimages and a.PatientPosition != 'HFS':
+				# 	raise NotImplementedError("Patient (Plan) is not in HFS position.")
 			else:
 				IOError("Expected RTDOSE or RTPLAN, but",a.modality,"was found.")
 

@@ -64,9 +64,6 @@ class PlanPane(QWidget):
 		l.addLayout(planNav,0)
 		l.addWidget(self.canvas,1)
 
-		self.informationButton = QPushButton("wut")
-		self.informationButton.clicked.connect(self.informationMessage)
-		l.addWidget(self.informationButton,0)
 		self.setLayout(l)
 
 		self.canvas.setFrame(self.bi,self.si,self.be)
@@ -82,11 +79,6 @@ class PlanPane(QWidget):
 	def setbe(self,v):
 		self.be=v
 		self.canvas.setFrame(self.bi,self.si,self.be)
-
-	def informationMessage(self):
-		a = QMessageBox()
-		a.setText(f'haha{self.bi,self.si,self.be}')
-		a.exec()
 
 
 class PlanCanvas(QWidget):
@@ -231,15 +223,13 @@ class DosiaMain(QMainWindow):
 		self.setWindowIcon(QIcon('gui/audio-card.svg'))
 
 		# Menu bar
-		menu_open_plan = QAction('&RT Plan', self)
-		menu_open_plan.triggered.connect(self.setplan)
-		menu_open_ct = QAction('&Plan CT', self)
-		menu_open_ct.triggered.connect(self.setct)
-		menu_open_dose = QAction('&Plan Dose', self)
-		menu_open_dose.triggered.connect(self.setdose)
-		menu_open_linaclog = QAction('&Linac Log', self)
-		menu_open_linaclog.triggered.connect(self.setlinaclog)
-		menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
+		menu_load_file = QAction('&File (RTPlan, Dose, CT)', self)
+		menu_load_file.triggered.connect(self.loadfile)
+		menu_load_dir = QAction('&Directory (CT)', self)
+		menu_load_dir.triggered.connect(self.loaddir)
+		# menu_open_linaclog = QAction('&Linac Log', self)
+		# menu_open_linaclog.triggered.connect(self.loadlinaclog)
+		# menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
 
 		menu_gpumcd_calculate = QAction('&Calculate Dose', self)
 		menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
@@ -249,11 +239,9 @@ class DosiaMain(QMainWindow):
 		menu_gpumcd_save.setDisabled(True) #TODO: enable if gpumcd dose calculated.
 
 		menu_bar = self.menuBar()
-		menu_open = menu_bar.addMenu('&Open')
-		menu_open.addAction(menu_open_plan)
-		menu_open.addAction(menu_open_ct)
-		menu_open.addAction(menu_open_dose)
-		menu_open.addAction(menu_open_linaclog)
+		menu_open = menu_bar.addMenu('&Load')
+		menu_open.addAction(menu_load_file)
+		menu_open.addAction(menu_load_dir)
 
 		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
 		menu_gpumcd.addAction(menu_gpumcd_calculate)
@@ -277,43 +265,38 @@ class DosiaMain(QMainWindow):
 
 	#TODO: error handling in loading files
 
-	def setcase(self):
+	def loadfile(self):
+		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom file (rtplan, ct or dose)')[0])
+		try:
+			opendicomobject = dicom.pydicom_object(fname)
+			if opendicomobject.modality == "RTPLAN":
+				self.planpane = PlanPane(fname)
+			if opendicomobject.modality == "CT":
+				self.ctpane = ImagePane(fname)
+			if opendicomobject.modality == "RTDOSE":
+				self.plandosepane = ImagePane(fname)
+		except Exception as e:
+			self.popup(f"That was not a valid DICOM file.\n{str(e)}")
+			return
+		self.resetpanes()
+
+	def loaddir(self):
+		fname = str(QFileDialog.getExistingDirectory(self, 'Open Dicom CT (slices) directory'))
+		try:
+			opendicomobject = dicom.pydicom_object(fname)
+			assert opendicomobject.modality == "CT", "That directory did not contain a valid set of DICOM CT slices."
+			self.ctpane = ImagePane(fname)
+		except Exception as e:
+			self.popup(f"That was not a valid DICOM file.\n{str(e)}")
+			return
+		self.resetpanes()
+
+	def loadcase(self):
 		# TODO: open dir and search for rtplan,ct,dose and set panes accordingly.
 		# multiple rtplan selector?
 		pass
 
-	def setplan(self):
-		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Plan')[0])
-		self.planpane = PlanPane(fname)
-		self.resetpanes()
-
-	def setct(self):
-		# fname = str(QFileDialog.getOpenFileName(self, 'Open CT Dicom')[0])
-		fname = str(QFileDialog.getExistingDirectory(self, 'Open Dicom CT'))
-		try:
-			opendicomobject = dicom.pydicom_object(fname)
-			assert opendicomobject.modality == "CT"
-		except:
-			IOError("That aint no dicom ct!")
-			return
-		self.ctpane = ImagePane(fname)
-		self.resetpanes()
-
-	def setdose(self):
-		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
-		try:
-			opendicomobject = dicom.pydicom_object(fname)
-			assert opendicomobject.modality == "RTDOSE"
-			assert str(a.data.DoseUnits) == "GY"
-			assert str(a.data.DoseType) == "PHYSICAL"
-			assert str(a.data.DoseSummationType) in ["PLAN","FRACTION"]
-		except:
-			IOError("That was not a valid plan.")
-			return
-		self.plandosepane = ImagePane(fname)
-		self.resetpanes()
-
-	def setlinaclog(self):
+	def loadlinaclog(self):
 		# fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
 		# self.topleft = QWidget()#somewidget(fname)
 		self.resetpanes()
@@ -330,6 +313,12 @@ class DosiaMain(QMainWindow):
 		# self.topleft = QWidget()#somewidget(fname)
 		# self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
 		pass
+
+	def popup(self,message):
+		a = QMessageBox()
+		a.setText(message)
+		a.exec()
+		print(str(message))
 
 
 if __name__ == '__main__':
