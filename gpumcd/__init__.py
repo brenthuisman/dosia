@@ -185,7 +185,7 @@ class Accelerator():
 			self.leafs_per_bank = 40
 			ImportError("MLCi80 found, but no such machine exists in machine library.")
 		else:
-			ImportError("Unknown type of TreatmentMachineName found:"+typstring)
+			ImportError("Unknown type of TreatmentMachineName found:"+typestring)
 
 		# with open(self.machfile, 'r') as myfile:
 		# 	self.machfile = myfile.read()
@@ -212,6 +212,9 @@ class Rtplan():
 		assert(isinstance(rtplan_dicom,dicom.pydicom_object))
 
 		self.accelerator = Accelerator(sett,rtplan_dicom.data.BeamSequence[0].TreatmentMachineName,rtplan_dicom.data.BeamSequence[0].ControlPointSequence[0].NominalBeamEnergy)
+		self.NumberOfFractionsPlanned = rtplan_dicom.NumberOfFractionsPlanned
+		self.BeamDose = rtplan_dicom.BeamDose
+		self.BeamDoseSpecificationPoint = rtplan_dicom.BeamDoseSpecificationPoint
 
 		self.sett = sett
 		firstsegmentonly = False
@@ -240,12 +243,14 @@ class Rtplan():
 			asymx_index = None
 			for bld_index in range(len(rtplan_dicom.data.BeamSequence[bi].BeamLimitingDeviceSequence)):
 				thistype = rtplan_dicom.data.BeamSequence[bi].BeamLimitingDeviceSequence[bld_index].RTBeamLimitingDeviceType
-				if "MLCX" in thistype:
+				if "MLCX" == thistype:
 					mlcx_index = bld_index
-				if "ASYMY" in thistype:
+				elif "ASYMY" == thistype or "Y" == thistype:
 					asymy_index = bld_index
-				if "ASYMX" in thistype:
+				elif "ASYMX" == thistype or "X" == thistype:
 					asymx_index = bld_index
+				elif "MLCY" == thistype:
+					raise NotImplementedError("This plan has an ASYMY, which is not implemented.")
 
 			#following only available in first cp
 			isoCenter = [coor*scale for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
@@ -261,54 +266,70 @@ class Rtplan():
 
 				self.beams[bi][cpi] = Segment()
 
-				self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1) # ASYMY
-
-				if self.accelerator.parallelJaw:
-					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0)
+				if asymy_index is None:
+					self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(-1)
 				else:
+					self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1)
+
+				if asymx_index is None:
 					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(-1)
+				else:
+					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0)
 
 				self.beams[bi][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
+				if mlcx_index is None:
+					self.beams[bi][cpi].collimator.mlc.orientation = ModifierOrientation(-1)
+				else:
+					self.beams[bi][cpi].collimator.mlc.orientation = ModifierOrientation(0)
 
 				# Now, let's see what our dicom gives us about this beam
 
-				self.beams[bi][cpi].beamInfo.relativeWeight = (cp_next.CumulativeMetersetWeight-cp_this.CumulativeMetersetWeight) * bw
-				self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
 				#following only available in first cp
 				self.beams[bi][cpi].beamInfo.isoCenter = Float3(*isoCenter)
 				self.beams[bi][cpi].beamInfo.couchAngle = Pair(couchAngle)
 				self.beams[bi][cpi].beamInfo.collimatorAngle = Pair(collimatorAngle)
 
+				self.beams[bi][cpi].beamInfo.relativeWeight = (cp_next.CumulativeMetersetWeight-cp_this.CumulativeMetersetWeight) * bw
+
+				#the final CPI may only have a weight and nothing else. Therefore, any other data we retrieve from cp_next, under a try()
+
+				try:
+					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
+				except:
+					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_this.GantryAngle)
+					cp_next = cp_this
+
 				# MLCX
 				mlcx_r = []
 				mlcx_l = []
-				try:
-					for l in range(self.accelerator.leafs_per_bank):
-						# leftleaves: eerste helft.
-						lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
-						rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
-						lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
-						rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
+				if mlcx_index is not None:
+					try:
+						for l in range(self.accelerator.leafs_per_bank):
+							# leftleaves: eerste helft.
+							lval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+							rval = cp_this.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
+							lval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l]*scale
+							rval_next = cp_next.BeamLimitingDevicePositionSequence[mlcx_index].LeafJawPositions[l+self.accelerator.leafs_per_bank]*scale
 
-						self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
-						self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
+							self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
+							self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
 
-						mlcx_r.extend([rval,rval_next])
-						mlcx_l.extend([lval,lval_next])
-				except Exception as e:# IndexError as e:
-					print(f"There was an parsing this RTPlan, aborting...")
-					if sett.debug['verbose']>0:
-						print(self.accelerator)
-						print(f"Filename: {rtplan_dicom.filename}")
-						print(f"Beamindex: {bi}")
-						print(f"controlpointindex: {cpi}")
-						print(f"mlcx_index: {mlcx_index}")
-						print(cp_this)
-						print(dir(cp_this))
-						print(cp_next)
-						print(dir(cp_next))
-						print(e)
-					raise e
+							mlcx_r.extend([rval,rval_next])
+							mlcx_l.extend([lval,lval_next])
+					except Exception as e:# IndexError as e:
+						print(f"There was an parsing this RTPlan, aborting...")
+						if sett.debug['verbose']>0:
+							print(self.accelerator)
+							print(f"Filename: {rtplan_dicom.filename}")
+							print(f"Beamindex: {bi}")
+							print(f"controlpointindex: {cpi}")
+							print(f"mlcx_index: {mlcx_index}")
+							print(cp_this)
+							print(dir(cp_this))
+							print(cp_next)
+							print(dir(cp_next))
+							print(e)
+						raise e
 
 
 				# prep for field extremeties
@@ -478,3 +499,44 @@ class __gpumcd__():
 		self.estimate_vram_consumption.argtypes = [
 			ctypes.c_int ]
 		self.estimate_vram_consumption.restype  = ctypes.c_int
+
+
+class Dosia():
+	''' This object will, given a plan, plandose and ct, handle a dose calculation for you, including running a few checks.'''
+
+	def __init__(self,sett,ct,plan,plandose):
+		assert(isinstance(sett,Settings))
+		assert(isinstance(ct,image.image))
+		assert(isinstance(plandose,image.image))
+		assert(isinstance(plan,Rtplan))
+
+		gpumcd_factor = False
+		try:
+			tpsdosespecpt = plandose.get_value(plan.BeamDoseSpecificationPoint)
+			assert(plan.BeamDose*0.9 < tpsdosespecpt < plan.BeamDose*1.1)
+		except:
+			gpumcd_factor = True
+			print("TPS dose it outside of expected planned dose per fraction in beamdosespecificationpoint. Your TPS probably exported the PLAN dose instead of FRACTION dose, GPUMCD dose will be multiplied with the number of fractions.")
+		ctcpy = ct
+		ctcpy.crop_as(plandose)
+		ct_obj = CT(sett,ctcpy)
+		ct_obj.dosemap.zero_out() #needed?
+
+		for beam in plan.beams:
+			eng=Engine(sett,ct_obj,plan.accelerator.machfile)
+			eng.execute_segments(beam)
+			if eng.lasterror()[0] != 0:
+				print (eng.lasterror())
+			eng.get_dose(ct_obj.dosemap)
+
+		if gpumcd_factor:
+			ct_obj.dosemap.mul(plan.NumberOfFractionsPlanned)
+		else:
+			# From what I've seen, dosemaps are exported per plan REGARDLESS of value of DoseSummationType. we try anyway.
+			if plandose.DoseSummationType == 'PLAN':
+				print("Dose was computed for whole PLAN, multiplying GPUMCD dose with number of fractions.")
+				ct_obj.dosemap.mul(plan.NumberOfFractionsPlanned)
+			else:
+				assert plandose.DoseSummationType == 'FRACTION'
+
+		self.gpumcd_dose = ct_obj.dosemap #.saveas(path.join(casedir,"xdr",sopid,"dose_gpumcd.xdr"))

@@ -10,24 +10,25 @@ class ImagePane(QWidget):
 	def __init__(self, fname, *args,**kwargs):
 		super().__init__(*args,**kwargs)
 
-		self.image = image.image(fname)
+		if isinstance(fname,image.image):
+			self.image = fname.copy()
+		else:
+			self.image = image.image(fname)
 
 		x,y,z=self.image.get_slices_at_index()
 		# import scipy.misc
 		# scipy.misc.imsave("d:/slicex.png",x)
 		# scipy.misc.imsave("d:/slicey.png",y)
 		# scipy.misc.imsave("d:/slicez.png",z)
-		x=np.interp(x, (x.min(), x.max()), (0, 255))
-		im = np.copy(np.rot90(np.rot90(np.uint8(x).T)),order='C')
-		self.qimage = QImage(im,im.shape[1],im.shape[0],QImage.Format_Grayscale8)
+		s=np.uint8(np.interp(x, (x.min(), x.max()), (0, 255)).T)
+		im = np.copy(np.rot90(np.rot90(s)),order='C')
+		self.qimage = QImage(im.data,im.shape[1],im.shape[0],QImage.Format_Grayscale8)
+
+		self.ready = True
 
 	def paintEvent(self,e):
 		painter = QPainter(self)
 		painter.drawPixmap(self.rect(), QPixmap(self.qimage))
-		# i=image.image(DimSize=[1,1],ElementSpacing=[1,1])
-		# a=QPixmap()
-		# a.loadFromData(i.get_ctypes_pointer_to_data(self.im))
-		# painter.drawPixmap(self.rect(), QPixmap(a))
 
 	def minimumSizeHint(self):
 		return QSize(200, 200)
@@ -38,10 +39,7 @@ class PlanPane(QWidget):
 		super().__init__(*args,**kwargs)
 
 		opendicomobject = dicom.pydicom_object(fname)
-		if opendicomobject.modality == "RTPLAN":
-			self.plan = gpumcd.Rtplan(sett,opendicomobject)
-		else:
-			IOError("That aint no dicom plan, mister!")
+		self.plan = gpumcd.Rtplan(sett,opendicomobject)
 
 		self.bi=0
 		self.si=0
@@ -67,6 +65,7 @@ class PlanPane(QWidget):
 		self.setLayout(l)
 
 		self.canvas.setFrame(self.bi,self.si,self.be)
+		self.ready = True
 
 	def setbi(self,v):
 		self.bi=v
@@ -122,25 +121,26 @@ class PlanCanvas(QWidget):
 		hor_zoom= h400 / 400. * 20
 		leafedges = np.linspace(0,h,plan.accelerator.leafs_per_bank+1)
 
-		for l in range(plan.accelerator.leafs_per_bank):
-			bound1 = leafedges[l]
-			bound2 = leafedges[l+1]
+		if segment.collimator.mlc.orientation.value is not -1:
+			for l in range(plan.accelerator.leafs_per_bank):
+				bound1 = leafedges[l]
+				bound2 = leafedges[l+1]
 
-			#left
-			coord = vert_zoom * getattr(segment.collimator.mlc.leftLeaves[l],attr)
-			pen.setColor(Qt.green)
-			qp.setPen(pen)
-			qp.drawLine(w400+coord, bound1, w400+coord, bound2)
-			qp.drawLine(w400+coord-50, bound1, w400+coord, bound1,)
-			qp.drawLine(w400+coord-50, bound2, w400+coord, bound2)
+				#left
+				coord = vert_zoom * getattr(segment.collimator.mlc.leftLeaves[l],attr)
+				pen.setColor(Qt.green)
+				qp.setPen(pen)
+				qp.drawLine(w400+coord, bound1, w400+coord, bound2)
+				qp.drawLine(w400+coord-50, bound1, w400+coord, bound1,)
+				qp.drawLine(w400+coord-50, bound2, w400+coord, bound2)
 
-			#right
-			coord = vert_zoom * getattr(segment.collimator.mlc.rightLeaves[l],attr)
-			pen.setColor(Qt.blue)
-			qp.setPen(pen)
-			qp.drawLine(w400+coord, bound1, w400+coord, bound2)
-			qp.drawLine(w400+coord+50, bound1, w400+coord, bound1)
-			qp.drawLine(w400+coord+50, bound2, w400+coord, bound2)
+				#right
+				coord = vert_zoom * getattr(segment.collimator.mlc.rightLeaves[l],attr)
+				pen.setColor(Qt.blue)
+				qp.setPen(pen)
+				qp.drawLine(w400+coord, bound1, w400+coord, bound2)
+				qp.drawLine(w400+coord+50, bound1, w400+coord, bound1)
+				qp.drawLine(w400+coord+50, bound2, w400+coord, bound2)
 
 		if segment.collimator.parallelJaw.orientation.value == -1:
 			pen.setStyle(Qt.DashLine)
@@ -148,25 +148,29 @@ class PlanCanvas(QWidget):
 			pass
 
 		#jaws
-		l,r = vert_zoom* getattr(segment.collimator.parallelJaw.j1,attr), vert_zoom * getattr(segment.collimator.parallelJaw.j2,attr)
 
-		pen.setColor(Qt.green)
-		pen.setWidth(2)
-		qp.setPen(pen)
-		qp.drawLine(w400+l, 0, w400+l, h)
+		if segment.collimator.parallelJaw.orientation.value is not -1:
+			l,r = vert_zoom* getattr(segment.collimator.parallelJaw.j1,attr), vert_zoom * getattr(segment.collimator.parallelJaw.j2,attr)
 
-		pen.setColor(Qt.blue)
-		qp.drawLine(w400+r, 0, w400+r, h)
+			pen.setColor(Qt.green)
+			pen.setWidth(2)
+			qp.setPen(pen)
+			qp.drawLine(w400+l, 0, w400+l, h)
 
-		t,b = hor_zoom* getattr(segment.collimator.perpendicularJaw.j1,attr), hor_zoom * getattr(segment.collimator.perpendicularJaw.j2,attr)
+			pen.setColor(Qt.blue)
+			qp.drawLine(w400+r, 0, w400+r, h)
 
-		pen.setColor(Qt.cyan)
-		pen.setStyle(Qt.SolidLine)
-		qp.setPen(pen)
-		qp.drawLine(0, h400+t, w, h400+t)
-		pen.setColor(Qt.magenta)
-		qp.setPen(pen)
-		qp.drawLine(0, h400+b, w, h400+b)
+
+		if segment.collimator.perpendicularJaw.orientation.value is not -1:
+			t,b = hor_zoom* getattr(segment.collimator.perpendicularJaw.j1,attr), hor_zoom * getattr(segment.collimator.perpendicularJaw.j2,attr)
+
+			pen.setColor(Qt.cyan)
+			pen.setStyle(Qt.SolidLine)
+			qp.setPen(pen)
+			qp.drawLine(0, h400+t, w, h400+t)
+			pen.setColor(Qt.magenta)
+			qp.setPen(pen)
+			qp.drawLine(0, h400+b, w, h400+b)
 
 		# fieldsize
 		x1,x2 = vert_zoom* segment.beamInfo.fieldMin.first, vert_zoom * segment.beamInfo.fieldMax.first
@@ -223,20 +227,20 @@ class DosiaMain(QMainWindow):
 		self.setWindowIcon(QIcon('gui/audio-card.svg'))
 
 		# Menu bar
-		menu_load_file = QAction('&File (RTPlan, Dose, CT)', self)
-		menu_load_file.triggered.connect(self.loadfile)
+		menu_load_file = QAction('&File(s) (RTPlan, Dose, CT)', self)
+		menu_load_file.triggered.connect(self.loadfiles)
 		menu_load_dir = QAction('&Directory (CT)', self)
 		menu_load_dir.triggered.connect(self.loaddir)
 		# menu_open_linaclog = QAction('&Linac Log', self)
 		# menu_open_linaclog.triggered.connect(self.loadlinaclog)
 		# menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
 
-		menu_gpumcd_calculate = QAction('&Calculate Dose', self)
-		menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
-		menu_gpumcd_calculate.setDisabled(True) #TODO: enable if rtplan and ct loaded
-		menu_gpumcd_save = QAction('&Save Dose', self)
-		menu_gpumcd_save.triggered.connect(self.savegpumcd)
-		menu_gpumcd_save.setDisabled(True) #TODO: enable if gpumcd dose calculated.
+		self.menu_gpumcd_calculate = QAction('&Calculate Dose', self)
+		self.menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
+		self.menu_gpumcd_calculate.setDisabled(True) #TODO: enable if rtplan and ct loaded
+		self.menu_gpumcd_save = QAction('&Save Dose', self)
+		self.menu_gpumcd_save.triggered.connect(self.savegpumcd)
+		self.menu_gpumcd_save.setDisabled(True) #TODO: enable if gpumcd dose calculated.
 
 		menu_bar = self.menuBar()
 		menu_open = menu_bar.addMenu('&Load')
@@ -244,8 +248,8 @@ class DosiaMain(QMainWindow):
 		menu_open.addAction(menu_load_dir)
 
 		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
-		menu_gpumcd.addAction(menu_gpumcd_calculate)
-		menu_gpumcd.addAction(menu_gpumcd_save)
+		menu_gpumcd.addAction(self.menu_gpumcd_calculate)
+		menu_gpumcd.addAction(self.menu_gpumcd_save)
 
 		# Quadrants
 		self.planpane = QWidget()
@@ -261,20 +265,26 @@ class DosiaMain(QMainWindow):
 		self.show()
 
 	def resetpanes(self):
+		try:
+			if self.planpane.ready and self.plandosepane.ready and self.ctpane.ready:
+				self.menu_gpumcd_calculate.setDisabled(False)
+		except:
+			pass #first launch
 		self.setCentralWidget(FourPanel(self.planpane,self.plandosepane,self.ctpane,self.gpumcdpane))
 
 	#TODO: error handling in loading files
 
-	def loadfile(self):
-		fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom file (rtplan, ct or dose)')[0])
+	def loadfiles(self):
+		files=QFileDialog.getOpenFileNames(self, 'Load Dicom file(s) (RTPlan, Dose, CT)')[0]
 		try:
-			opendicomobject = dicom.pydicom_object(fname)
-			if opendicomobject.modality == "RTPLAN":
-				self.planpane = PlanPane(fname)
-			if opendicomobject.modality == "CT":
-				self.ctpane = ImagePane(fname)
-			if opendicomobject.modality == "RTDOSE":
-				self.plandosepane = ImagePane(fname)
+			for fname in files:
+				opendicomobject = dicom.pydicom_object(fname)
+				if opendicomobject.modality == "RTPLAN":
+					self.planpane = PlanPane(fname)
+				if opendicomobject.modality == "CT":
+					self.ctpane = ImagePane(fname)
+				if opendicomobject.modality == "RTDOSE":
+					self.plandosepane = ImagePane(fname)
 		except Exception as e:
 			self.popup(f"That was not a valid DICOM file.\n{str(e)}")
 			return
@@ -302,17 +312,17 @@ class DosiaMain(QMainWindow):
 		self.resetpanes()
 
 	def calcgpumcd(self):
-		# fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
-		# self.topleft = QWidget()#somewidget(fname)
+		dosia = gpumcd.Dosia(sett,self.ctpane.image,self.planpane.plan,self.plandosepane.image)
+
+		self.gpumcdpane = ImagePane(dosia.gpumcd_dose)
+		self.menu_gpumcd_save.setDisabled(False)
 		self.resetpanes()
-		pass
 
 	def savegpumcd(self):
 		fname = str(QFileDialog.getSaveFileName(self, 'Save GPUMCD Dose')[0])
-		self.gpumcdpane.save(fname)
+		self.gpumcdpane.image.saveas(fname)
 		# self.topleft = QWidget()#somewidget(fname)
 		# self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
-		pass
 
 	def popup(self,message):
 		a = QMessageBox()
@@ -326,19 +336,21 @@ if __name__ == '__main__':
 
 	app = QApplication(sys.argv)
 
-	# TEST PLAN VIEWER
+	#### TEST PLAN VIEWER
 	# fname="D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.1025001435024675917588954042793107482"
-	# opendicomobject = dicom.pydicom_object(fname)
-	# p=PlanPane(gpumcd.Rtplan(gpumcd.Settings(),opendicomobject))
-	# p.show()
+	# fname="D:/postdoc/analyses/correcteddicom/F180220C/1.3.46.670589.13.586672257.20190716134201.81016_0001_000000_156328075700a1.dcm"
+	fname="D:/postdoc/analyses/correcteddicom/MonacoPhantom/2.16.840.1.113669.2.931128.223131424.20180410170709.445490_0001_000000_1533630935003e.dcm"
+	p=PlanPane(fname)
+	p.show()
 
-	# TEST CT VIEWER
+	#### TEST IMAGE VIEWER
 	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
+	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.117736802457958133832899838499337503296"
 	# p=ImagePane(fname)
 	# p.show()
 
 
-	# TEST MAIN
-	Main = DosiaMain()
+	#### TEST MAIN
+	# Main = DosiaMain()
 
 	sys.exit(app.exec())
