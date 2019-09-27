@@ -113,7 +113,7 @@ class PlanCanvas(QWidget):
 
 		qp = QPainter()
 		qp.begin(self)
-		pen = QPen(Qt.black, 2, Qt.SolidLine)
+		pen = QPen(Qt.black, 1, Qt.SolidLine)
 
 		h400 = h/2 # TEST
 		w400 = w/2 # TEST
@@ -121,56 +121,58 @@ class PlanCanvas(QWidget):
 		hor_zoom= h400 / 400. * 20
 		leafedges = np.linspace(0,h,plan.accelerator.leafs_per_bank+1)
 
-		if segment.collimator.mlc.orientation.value is not -1:
-			for l in range(plan.accelerator.leafs_per_bank):
-				bound1 = leafedges[l]
-				bound2 = leafedges[l+1]
+		if segment.collimator.mlc.orientation.value == -1:
+			pen.setStyle(Qt.DashLine)
+		else:
+			pen.setStyle(Qt.SolidLine)
+		for l in range(plan.accelerator.leafs_per_bank):
+			bound1 = leafedges[l]
+			bound2 = leafedges[l+1]
 
-				#left
-				coord = vert_zoom * getattr(segment.collimator.mlc.leftLeaves[l],attr)
-				pen.setColor(Qt.green)
-				qp.setPen(pen)
-				qp.drawLine(w400+coord, bound1, w400+coord, bound2)
-				qp.drawLine(w400+coord-50, bound1, w400+coord, bound1,)
-				qp.drawLine(w400+coord-50, bound2, w400+coord, bound2)
+			#left
+			coord = vert_zoom * getattr(segment.collimator.mlc.leftLeaves[l],attr)
+			pen.setColor(Qt.green)
+			qp.setPen(pen)
+			qp.drawLine(w400+coord, bound1, w400+coord, bound2)
+			qp.drawLine(w400+coord-50, bound1, w400+coord, bound1,)
+			qp.drawLine(w400+coord-50, bound2, w400+coord, bound2)
 
-				#right
-				coord = vert_zoom * getattr(segment.collimator.mlc.rightLeaves[l],attr)
-				pen.setColor(Qt.blue)
-				qp.setPen(pen)
-				qp.drawLine(w400+coord, bound1, w400+coord, bound2)
-				qp.drawLine(w400+coord+50, bound1, w400+coord, bound1)
-				qp.drawLine(w400+coord+50, bound2, w400+coord, bound2)
+			#right
+			coord = vert_zoom * getattr(segment.collimator.mlc.rightLeaves[l],attr)
+			pen.setColor(Qt.blue)
+			qp.setPen(pen)
+			qp.drawLine(w400+coord, bound1, w400+coord, bound2)
+			qp.drawLine(w400+coord+50, bound1, w400+coord, bound1)
+			qp.drawLine(w400+coord+50, bound2, w400+coord, bound2)
 
+		#jaws
 		if segment.collimator.parallelJaw.orientation.value == -1:
 			pen.setStyle(Qt.DashLine)
 		else:
-			pass
-
-		#jaws
-
-		if segment.collimator.parallelJaw.orientation.value is not -1:
-			l,r = vert_zoom* getattr(segment.collimator.parallelJaw.j1,attr), vert_zoom * getattr(segment.collimator.parallelJaw.j2,attr)
-
-			pen.setColor(Qt.green)
-			pen.setWidth(2)
-			qp.setPen(pen)
-			qp.drawLine(w400+l, 0, w400+l, h)
-
-			pen.setColor(Qt.blue)
-			qp.drawLine(w400+r, 0, w400+r, h)
-
-
-		if segment.collimator.perpendicularJaw.orientation.value is not -1:
-			t,b = hor_zoom* getattr(segment.collimator.perpendicularJaw.j1,attr), hor_zoom * getattr(segment.collimator.perpendicularJaw.j2,attr)
-
-			pen.setColor(Qt.cyan)
 			pen.setStyle(Qt.SolidLine)
-			qp.setPen(pen)
-			qp.drawLine(0, h400+t, w, h400+t)
-			pen.setColor(Qt.magenta)
-			qp.setPen(pen)
-			qp.drawLine(0, h400+b, w, h400+b)
+		# if segment.collimator.parallelJaw.orientation.value is not -1:
+		l,r = vert_zoom* getattr(segment.collimator.parallelJaw.j1,attr), vert_zoom * getattr(segment.collimator.parallelJaw.j2,attr)
+		pen.setColor(Qt.green)
+		pen.setWidth(2)
+		qp.setPen(pen)
+		qp.drawLine(w400+l, 0, w400+l, h)
+		pen.setColor(Qt.blue)
+		qp.setPen(pen)
+		qp.drawLine(w400+r, 0, w400+r, h)
+
+
+		if segment.collimator.perpendicularJaw.orientation.value == -1:
+			pen.setStyle(Qt.DashLine)
+		else:
+			pen.setStyle(Qt.SolidLine)
+		# if segment.collimator.perpendicularJaw.orientation.value is not -1:
+		t,b = hor_zoom* getattr(segment.collimator.perpendicularJaw.j1,attr), hor_zoom * getattr(segment.collimator.perpendicularJaw.j2,attr)
+		pen.setColor(Qt.cyan)
+		qp.setPen(pen)
+		qp.drawLine(0, h400+t, w, h400+t)
+		pen.setColor(Qt.magenta)
+		qp.setPen(pen)
+		qp.drawLine(0, h400+b, w, h400+b)
 
 		# fieldsize
 		x1,x2 = vert_zoom* segment.beamInfo.fieldMin.first, vert_zoom * segment.beamInfo.fieldMax.first
@@ -337,11 +339,11 @@ if __name__ == '__main__':
 	app = QApplication(sys.argv)
 
 	#### TEST PLAN VIEWER
-	fname="D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.1025001435024675917588954042793107482"
+	# fname="D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.1025001435024675917588954042793107482"
 	# fname="D:/postdoc/analyses/correcteddicom/F180220C/1.3.46.670589.13.586672257.20190716134201.81016_0001_000000_156328075700a1.dcm"
 	# fname="D:/postdoc/analyses/correcteddicom/MonacoPhantom/2.16.840.1.113669.2.931128.223131424.20180410170709.445490_0001_000000_1533630935003e.dcm"
-	p=PlanPane(fname)
-	p.show()
+	# p=PlanPane(fname)
+	# p.show()
 
 	#### TEST IMAGE VIEWER
 	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
@@ -351,6 +353,6 @@ if __name__ == '__main__':
 
 
 	#### TEST MAIN
-	# Main = DosiaMain()
+	Main = DosiaMain()
 
 	sys.exit(app.exec())

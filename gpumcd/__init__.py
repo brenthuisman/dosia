@@ -160,8 +160,11 @@ class CT():
 
 class Accelerator():
 	def __init__(self,sett,typestring,energy):
+		## Actually, it would be nicer if we could get this from just the typestring and the number and values of "MODIFIER-NAME" in the machine file. Or map typestring to machine in dosia.ini instead of here
+		## TODO instead of parallelJaw, set orientations of jaws here.
 		assert(isinstance(sett,Settings))
 		assert(isinstance(typestring,str))
+		typestring = typestring.upper()
 		self.type = None
 		self.energy = None #is in controlpoint
 		self.filter = None #unknown
@@ -178,6 +181,12 @@ class Accelerator():
 				self.machfile = sett.machinefiles['Agility_MV6_FF']
 			if energy == 10:
 				self.machfile = sett.machinefiles['Agility_MV10_FF']
+		elif 'MRL' in typestring:
+			self.type = 'MLCi80'
+			self.energy = energy
+			self.filter = True
+			self.leafs_per_bank = 40
+			ImportError("MLCi80 found, but no such machine exists in machine library.")
 		elif 'MLC80' in typestring or 'M80' in typestring:
 			self.type = 'MLCi80'
 			self.energy = energy
@@ -228,8 +237,9 @@ class Rtplan():
 
 		self.beams=[] #for each beam, controlpoints
 		for bi,bw in enumerate(self.beamweights):
-			#total weight of cps in beam is 1
+			# total weight of cps in beam is 1
 			# convert cumulative weights to relative weights and then absolute weights using bw.
+			# https://dicom.innolitics.com/ciods/rt-plan/rt-beams/300a00b0/300a00b6/300a00b8
 
 			nbcps = rtplan_dicom.data.BeamSequence[bi].NumberOfControlPoints
 			nsegments = (nbcps-1)
@@ -239,6 +249,7 @@ class Rtplan():
 					break
 
 			mlcx_index = None
+			mlcy_index = None
 			asymy_index = None
 			asymx_index = None
 			for bld_index in range(len(rtplan_dicom.data.BeamSequence[bi].BeamLimitingDeviceSequence)):
@@ -250,7 +261,13 @@ class Rtplan():
 				elif "ASYMX" == thistype or "X" == thistype:
 					asymx_index = bld_index
 				elif "MLCY" == thistype:
-					raise NotImplementedError("This plan has an ASYMY, which is not implemented.")
+					mlcy_index = bld_index
+
+			if mlcx_index != None and mlcy_index != None:
+				raise NotImplementedError("This plan has BOTH an MLCX and MLCY, which is not implemented.")
+
+			# TODO check if the above matches Accelerator().
+			assert(mlcy_index == None)
 
 			#following only available in first cp
 			isoCenter = [coor*scale for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
@@ -271,16 +288,15 @@ class Rtplan():
 				else:
 					self.beams[bi][cpi].collimator.perpendicularJaw.orientation = ModifierOrientation(1)
 
-				if asymx_index is None:
+				if asymx_index is None or self.accelerator.parallelJaw is False:
 					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(-1)
 				else:
 					self.beams[bi][cpi].collimator.parallelJaw.orientation = ModifierOrientation(0)
 
 				self.beams[bi][cpi].collimator.mlc = MlcInformation(self.accelerator.leafs_per_bank)
 				if mlcx_index is None:
-					self.beams[bi][cpi].collimator.mlc.orientation = ModifierOrientation(-1)
-				else:
-					self.beams[bi][cpi].collimator.mlc.orientation = ModifierOrientation(0)
+					print("No MLC in this CPI, setting it up to match jaw bounds")
+				self.beams[bi][cpi].collimator.mlc.orientation = ModifierOrientation(0)
 
 				# Now, let's see what our dicom gives us about this beam
 
@@ -330,13 +346,27 @@ class Rtplan():
 							print(dir(cp_next))
 							print(e)
 						raise e
+				else:
+					for l in range(self.accelerator.leafs_per_bank):
+
+						rval = cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale
+						rval_next = cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale
+						lval = cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale
+						lval_next = cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale
+
+						self.beams[bi][cpi].collimator.mlc.rightLeaves[l] = Pair(rval,rval_next)
+						self.beams[bi][cpi].collimator.mlc.leftLeaves[l] = Pair(lval,lval_next)
+
+						mlcx_r.extend([rval,rval_next])
+						mlcx_l.extend([lval,lval_next])
+					# No MLC in CPI, but ofc MLC must be set correctly.
 
 
 				# prep for field extremeties
 				self.beams[bi][cpi].beamInfo.fieldMin = Pair()
 				self.beams[bi][cpi].beamInfo.fieldMax = Pair()
 
-				#ASYM X. ASYMX may be present in plan, even if accelerator doesnt have it.
+				#parallelJaw. may be present in plan, even if accelerator doesnt have it.
 				# if self.beams[bi][cpi].collimator.parallelJaw.orientation.value != -1:
 				if asymx_index is not None:
 					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale)
@@ -345,21 +375,23 @@ class Rtplan():
 					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale)
 					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale)
 				else:
-					#if no ASYM X, then we must get extreme field borders from MLCX
-					print("No ASYMX jaw found in dicom, using leaf extrema to find field extrema.")
+					#if no paralleljaw, then we must get extreme field borders from MLCX
 					raise NotImplementedError("For missing ASYMX, we need to find leaf extrema within ASYMY bounds. This has not been implemented yet.")
 					# self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l)*scale)
 					# self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r)*scale)
 					# self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
 					# self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
 
-				# ASYM Y
-				self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
-				self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
-
-				# y coords of fieldsize
-				self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
-				self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
+				# perpendicularJaw
+				if asymy_index is not None:
+					self.beams[bi][cpi].collimator.perpendicularJaw.j1 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
+					self.beams[bi][cpi].collimator.perpendicularJaw.j2 = Pair(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
+					# y coords of fieldsize
+					self.beams[bi][cpi].beamInfo.fieldMin.second = min(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[0]*scale)
+					self.beams[bi][cpi].beamInfo.fieldMax.second = max(cp_this.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymy_index].LeafJawPositions[1]*scale)
+				else:
+					#if no perpendicularjaw, then what?
+					raise NotImplementedError("No ASYMY jaw found in dicom.")
 
 				# apply field margins
 				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']*scale
