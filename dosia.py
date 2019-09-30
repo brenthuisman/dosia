@@ -13,7 +13,7 @@ class ImagePane(QWidget):
 		if isinstance(fname,image.image):
 			self.image = fname.copy()
 		else:
-			self.image = image.image(fname)
+			self.image = image.image(fname,sitk=True)
 
 		x,y,z=self.image.get_slices_at_index()
 		# import scipy.misc

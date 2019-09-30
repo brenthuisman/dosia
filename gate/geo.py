@@ -1,13 +1,13 @@
-import math
 from math import acos,cos,sin,sqrt
 
 def rotator(heading, attitude, bank):
-	#Converts from euler angles to matrix angles (or something like that, I'm not even sure.)
-	#src:
-	#http://proj-clhep.web.cern.ch/proj-clhep/doc/CLHEP_2_1_3_1/doxygen/html/Rotation_8cc-source.html#l00153
-	#Gate and Geant4 rotations actually are typedefd CLHEP rotations.
-	#http://www.euclideanspace.com/maths/geometry/rotations/conversions/eulerToMatrix/index.htm
-
+	'''
+	Converts from euler angles to matrix angles (or something like that, I'm not even sure.)
+	src:
+	http://proj-clhep.web.cern.ch/proj-clhep/doc/CLHEP_2_1_3_1/doxygen/html/Rotation_8cc-source.html#l00153
+	Gate and Geant4 rotations actually are typedefd CLHEP rotations.
+	http://www.euclideanspace.com/maths/geometry/rotations/conversions/eulerToMatrix/index.htm
+	'''
 	ch = cos(heading)
 	sh = sin(heading)
 	ca = cos(attitude)

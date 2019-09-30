@@ -6,7 +6,7 @@ casedir = r"d:\postdoc\analyses\gpumcd_python\dicom\20181101 CTRT KNO-hals"
 
 sett = gpumcd.Settings("d:\\postdoc\\gpumcd_data")
 
-studies = dicom.pydicom_casedir(casedir)
+studies = dicom.build_casedir(casedir)
 
 for studyid,v in studies.items():
 	# print ('brent',studyid,'\n')

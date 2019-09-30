@@ -1,6 +1,7 @@
-from .tovoxel import *
-
 def getrtplanfile(filename):
+	'''
+	Look for rtplan file in a macfile. Recurses through included mac files.
+	'''
 	sourcefile = open(filename,'r')
 
 	rtfile = ""
@@ -9,9 +10,9 @@ def getrtplanfile(filename):
 		newline = line.strip()
 		if len(newline)==0:
 			continue
-		
+
 		newline=newline.split()
-	
+
 		if "/setPlan" in newline[0]:
 			#we are reading the plan
 			rtfile = newline[-1]

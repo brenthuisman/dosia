@@ -58,7 +58,7 @@ class pydicom_object():
 				self.BeamDose = None
 
 
-def pydicom_casedir(dname,loadimages=True):
+def build_casedir(dname,loadimages=True):
 	ct_dirs = glob.glob(path.join(dname,"*PLAN*"))
 	upi_dirs = glob.glob(path.join(dname,"*UPI*"))
 
