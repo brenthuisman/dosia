@@ -107,12 +107,16 @@ class Rtplan():
 
 				self.beams[bi][cpi].beamInfo.relativeWeight = (cp_next.CumulativeMetersetWeight-cp_this.CumulativeMetersetWeight) * bw
 
-				#the final CPI may only have a weight and nothing else. Therefore, any other data we retrieve from cp_next, under a try()
-
+				#the final CPI may only have a weight and nothing else. It may have a GantryAngle... or not.
+				# Therefore, any other data we retrieve from cp_next, under a try()
 				try:
 					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
 				except:
 					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_this.GantryAngle)
+				# Test if final cp has BeamLimitingDevicePositionSequence, if not, copy from cp_this
+				try:
+					cp_next.BeamLimitingDevicePositionSequence[0] #acces first, if not present, must be same as previous
+				except:
 					cp_next = cp_this
 
 				# MLCX
@@ -133,7 +137,7 @@ class Rtplan():
 							mlcx_r.extend([rval,rval_next])
 							mlcx_l.extend([lval,lval_next])
 					except Exception as e:# IndexError as e:
-						print(f"There was an parsing this RTPlan, aborting...")
+						print(f"There was an error parsing this RTPlan, aborting...")
 						if sett.debug['verbose']>0:
 							print(self.accelerator)
 							print(f"Filename: {rtplan_dicom.filename}")
@@ -175,12 +179,14 @@ class Rtplan():
 					self.beams[bi][cpi].beamInfo.fieldMin.first = min(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[0]*scale)
 					self.beams[bi][cpi].beamInfo.fieldMax.first = max(cp_this.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale,cp_next.BeamLimitingDevicePositionSequence[asymx_index].LeafJawPositions[1]*scale)
 				else:
-					#if no paralleljaw, then we must get extreme field borders from MLCX
-					raise NotImplementedError("For missing ASYMX, we need to find leaf extrema within ASYMY bounds. This has not been implemented yet.")
-					# self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l)*scale)
-					# self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r)*scale)
-					# self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
-					# self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
+					print ("No parallelJaw found, taking extremes MLC values as field-edges.")
+					#strictly speaking not relevant:
+					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l))
+					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r))
+					# but this is:
+					self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
+					self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
+					# FIXME: should really be looking at leafs within ASYMY bounds
 
 				# perpendicularJaw
 				if asymy_index is not None:

@@ -13,7 +13,7 @@ class Accelerator():
 		self.leafs_per_bank = None
 		self.machfile = None
 		self.parallelJaw = True
-		if 'MLC160' in typestring or 'M160' in typestring:
+		if 'MLC160' in typestring or 'M160' in typestring or 'NKIAGILITY6MV' in typestring:
 			self.type = 'Agility'
 			self.energy = energy
 			self.filter = True #default
