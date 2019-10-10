@@ -184,8 +184,8 @@ class Rtplan():
 					self.beams[bi][cpi].collimator.parallelJaw.j1 = Pair(min(mlcx_l))
 					self.beams[bi][cpi].collimator.parallelJaw.j2 = Pair(max(mlcx_r))
 					# but this is:
-					self.beams[bi][cpi].beamInfo.fieldMax.first = min(mlcx_l)
-					self.beams[bi][cpi].beamInfo.fieldMin.first = max(mlcx_r)
+					self.beams[bi][cpi].beamInfo.fieldMin.first = min(mlcx_l)
+					self.beams[bi][cpi].beamInfo.fieldMax.first = max(mlcx_r)
 					# FIXME: should really be looking at leafs within ASYMY bounds
 
 				# perpendicularJaw
@@ -198,6 +198,19 @@ class Rtplan():
 				else:
 					#if no perpendicularjaw, then what?
 					raise NotImplementedError("No ASYMY jaw found in dicom.")
+
+				print('begin')
+				print('fieldedges:')
+				print(self.beams[bi][cpi].beamInfo.fieldMin.first)
+				print(self.beams[bi][cpi].beamInfo.fieldMin.second)
+				print(self.beams[bi][cpi].beamInfo.fieldMax.first)
+				print(self.beams[bi][cpi].beamInfo.fieldMax.second)
+				print('jaws:')
+				print(self.beams[bi][cpi].collimator.perpendicularJaw.j1.first)
+				print(self.beams[bi][cpi].collimator.perpendicularJaw.j2.first)
+				print(self.beams[bi][cpi].collimator.parallelJaw.j1.first)
+				print(self.beams[bi][cpi].collimator.parallelJaw.j2.first)
+
 
 				# apply field margins
 				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']*scale
