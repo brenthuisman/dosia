@@ -1,4 +1,5 @@
 import numpy as np, ctypes, medimage as image
+from os import path
 from .settings import Settings
 from .ctypes_helpers import c_array_to_pointer, str2charp, strlist2charpp
 from .gpumcdwrapper import __gpumcd__, BeamFrame, Segment
@@ -11,6 +12,10 @@ class Engine():
 		self.settings = settings
 		self.ct = ct
 		self.machfile = machfile
+
+		if not path.isfile(path.join(self.settings.directories['gpumcd_dll'],"GPUMonteCarloDoseLibrary.dll")):
+			print("GPUMonteCarloDoseLibrary.dll not found, brace for impact!")
+			# TODO convert to Error and handle somewhere else?
 
 		self.__gpumcd_object__ = __gpumcd__(self.settings.directories['gpumcd_dll'])
 

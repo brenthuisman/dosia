@@ -1,8 +1,4 @@
-*
-!*.py
-!*.cc
-!*.h
-!*/
-!.gitignore
-!LICENSE
-!Readme.md
+__pycache__
+GPUMonteCarloDoseLibrary.dll
+.vscode
+*.lnk

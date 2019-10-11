@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Copper
+MASS-DENSITY:         8.96
+NUMBER-OF-ELEMENTS:   1
+ATOMIC-NUMBER:        29	
+ATOMIC-MASS:          63.546
+PROPORTIONS:          1.0
+PROPORTIONS-BY-MASS:  yes

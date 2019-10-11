@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          PMMA
+MASS-DENSITY:         1.19
+NUMBER-OF-ELEMENTS:   3
+ATOMIC-NUMBER:        1         6         8
+ATOMIC-MASS:          1.008     12.011    15.999
+PROPORTIONS:          0.080538  0.599848  0.319614
+PROPORTIONS-BY-MASS:  yes

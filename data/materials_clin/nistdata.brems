@@ -1,0 +1,45 @@
+% This file contains bremsstrahlung differential cross section (DCS) data tabulated in the mid-1980s by
+% S. M. Seltzer and M. J. Berger of the U.S. National Bureau of Standards (now NIST). For more information,
+% and a slightly sparser version of the present data set, see
+%     Atomic Data and Nuclear Data Tables 35 (1986), 345-418.
+%
+% The present file contains the scaled bremsstrahlung DCS for electron-nuclear interactions only, not for
+% electron-electron interactions. It was created by running the script "prepareNistBremsData" at 11:24 PM
+% on 05-Oct-2013.
+%
+% The format of the data is as follows:
+%  - One line giving the dimensions of the data arrays.
+%  - A one-dimensional array of incident electron kinetic energies.
+%  - A one-dimensional array of photon energies (expressed as a fraction of the incident kinetic energy).
+%  - A one-dimensional array of atomic numbers.
+%  - A three-dimensional array of scaled differential cross section data, with the fractional photon energy
+%    changing fastest and the atomic number changing most slowly.
+%
+% This final three-dimensional array is in the binary file that accompanies this current one: 
+% nistdata.brems.binary. The purpose of the binary file is to speed-up the reading routine.
+%
+57  30  100
+
+    0.0010      0.0015      0.0020      0.0030      0.0040      0.0050      0.0060      0.0080      0.0100      0.0150
+    0.0200      0.0300      0.0400      0.0500      0.0600      0.0800      0.1000      0.1500      0.2000      0.3000
+    0.4000      0.5000      0.6000      0.8000      1.0000      1.5000      2.0000      3.0000      4.0000      5.0000
+    6.0000      8.0000     10.0000     15.0000     20.0000     30.0000     40.0000     50.0000     60.0000     80.0000
+  100.0000    150.0000    200.0000    300.0000    400.0000    500.0000    600.0000    800.0000   1000.0000   1500.0000
+ 2000.0000   3000.0000   4000.0000   5000.0000   6000.0000   8000.0000  10000.0000
+
+0.00000  0.05000  0.10000  0.15000  0.20000  0.25000  0.30000  0.35000  0.40000  0.45000
+0.50000  0.55000  0.60000  0.65000  0.70000  0.75000  0.80000  0.85000  0.90000  0.92500
+0.95000  0.97000  0.99000  0.99500  0.99900  0.99950  0.99990  0.99995  0.99999  1.00000
+
+   1     2     3     4     5     6     7     8     9    10
+  11    12    13    14    15    16    17    18    19    20
+  21    22    23    24    25    26    27    28    29    30
+  31    32    33    34    35    36    37    38    39    40
+  41    42    43    44    45    46    47    48    49    50
+  51    52    53    54    55    56    57    58    59    60
+  61    62    63    64    65    66    67    68    69    70
+  71    72    73    74    75    76    77    78    79    80
+  81    82    83    84    85    86    87    88    89    90
+  91    92    93    94    95    96    97    98    99   100
+
+ 

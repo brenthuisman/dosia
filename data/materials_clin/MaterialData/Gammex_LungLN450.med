@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Gammex_LungLN450
+MASS-DENSITY:         0.450
+NUMBER-OF-ELEMENTS:   7
+ATOMIC-NUMBER:        1         6         7         8         12        14        17
+ATOMIC-MASS:          1.008     12.011    14.007    15.999    24.305    28.085    35.453
+PROPORTIONS:          0.08469   0.59564   0.01970   0.18108   0.11209   0.00580   0.00100
+PROPORTIONS-BY-MASS:  yes

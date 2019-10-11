@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Gammex_BoneSB3
+MASS-DENSITY:         1.819
+NUMBER-OF-ELEMENTS:   6
+ATOMIC-NUMBER:        1         6         7         8         17        20
+ATOMIC-MASS:          1.008     12.011    14.007    15.999    35.453    40.078
+PROPORTIONS:          0.03410   0.31407   0.01840   0.36496   0.00040   0.26807
+PROPORTIONS-BY-MASS:  yes

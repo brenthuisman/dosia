@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          PPS_Rohacell
+MASS-DENSITY:         0.07
+NUMBER-OF-ELEMENTS:   4
+ATOMIC-NUMBER:        1         6         7         8
+ATOMIC-MASS:          1.0079	12.011    14.00670  15.99940
+PROPORTIONS:          0.078526	0.623817  0.041970  0.255687
+PROPORTIONS-BY-MASS:  yes

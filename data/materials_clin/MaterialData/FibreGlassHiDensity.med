@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          FibreGlassHiDensity
+MASS-DENSITY:         2.49
+NUMBER-OF-ELEMENTS:   5
+ATOMIC-NUMBER:        8      12     13     14     20
+ATOMIC-MASS:          15.999 24.305 26.982 28.085 40.078
+PROPORTIONS:          0.4622 0.0241 0.0688 0.2805 0.1644
+PROPORTIONS-BY-MASS:  yes

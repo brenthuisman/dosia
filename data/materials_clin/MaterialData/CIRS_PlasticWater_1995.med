@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Phantom_CIRS_PlasticWater_1995
+MASS-DENSITY:         1.014
+NUMBER-OF-ELEMENTS:   7
+ATOMIC-NUMBER:        1         6         7         8         17        20        35
+ATOMIC-MASS:          1.008     12.011    14.007    15.999    35.453    40.078    79.904
+PROPORTIONS:          0.09255   0.62821   0.01001   0.17949   0.00960   0.07954   0.00030
+PROPORTIONS-BY-MASS:  yes

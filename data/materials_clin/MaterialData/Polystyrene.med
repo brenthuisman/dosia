@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Polystyrene
+MASS-DENSITY:         1.03
+NUMBER-OF-ELEMENTS:   2
+ATOMIC-NUMBER:        1			6			
+ATOMIC-MASS:          1.0079	12.011
+PROPORTIONS:          0.077418	0.922582	
+PROPORTIONS-BY-MASS:  yes

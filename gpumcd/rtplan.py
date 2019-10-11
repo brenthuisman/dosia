@@ -199,19 +199,6 @@ class Rtplan():
 					#if no perpendicularjaw, then what?
 					raise NotImplementedError("No ASYMY jaw found in dicom.")
 
-				print('begin')
-				print('fieldedges:')
-				print(self.beams[bi][cpi].beamInfo.fieldMin.first)
-				print(self.beams[bi][cpi].beamInfo.fieldMin.second)
-				print(self.beams[bi][cpi].beamInfo.fieldMax.first)
-				print(self.beams[bi][cpi].beamInfo.fieldMax.second)
-				print('jaws:')
-				print(self.beams[bi][cpi].collimator.perpendicularJaw.j1.first)
-				print(self.beams[bi][cpi].collimator.perpendicularJaw.j2.first)
-				print(self.beams[bi][cpi].collimator.parallelJaw.j1.first)
-				print(self.beams[bi][cpi].collimator.parallelJaw.j2.first)
-
-
 				# apply field margins
 				self.beams[bi][cpi].beamInfo.fieldMin.first -= self.sett.dose['field_margin']*scale
 				self.beams[bi][cpi].beamInfo.fieldMin.second -= self.sett.dose['field_margin']*scale

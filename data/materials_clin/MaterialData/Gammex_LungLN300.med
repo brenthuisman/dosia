@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Gammex_LungLN300
+MASS-DENSITY:         0.300
+NUMBER-OF-ELEMENTS:   7
+ATOMIC-NUMBER:        1         6         7         8         12        14        17
+ATOMIC-MASS:          1.008     12.011    14.007    15.999    24.305    28.085    35.453
+PROPORTIONS:          0.08459   0.59374   0.01960   0.18138   0.11189   0.00780   0.00100
+PROPORTIONS-BY-MASS:  yes

@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          Phantom_PTW_RW3
+MASS-DENSITY:         1.045
+NUMBER-OF-ELEMENTS:   4
+ATOMIC-NUMBER:        1         6         8        22
+ATOMIC-MASS:          1.008     12.011    15.999   47.867
+PROPORTIONS:          0.0759    0.9041    0.0080   0.0120
+PROPORTIONS-BY-MASS:  yes
