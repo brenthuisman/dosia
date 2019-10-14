@@ -1,6 +1,7 @@
 import ctypes,numpy as np,os,math,time
 from os import path
-import gpumcd,image
+import gpumcd
+import medimage as image
 
 print('Start of program.')
 

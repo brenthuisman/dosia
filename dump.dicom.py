@@ -1,4 +1,4 @@
-import image,numpy as np,dicom,glob,collections
+import medimage as image,numpy as np,dicom,glob,collections
 from os import path, makedirs
 import gpumcd
 

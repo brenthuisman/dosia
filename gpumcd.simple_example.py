@@ -1,7 +1,7 @@
 import ctypes,numpy as np,os
 import gpumcd
 from os import path
-import image
+import medimage as image
 
 outputdir = "d:\\postdoc\\analyses\\gpumcd_python"
 

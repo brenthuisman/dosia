@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse,numpy as np
 import seaborn as sns,matplotlib.pyplot as plt,scipy.stats as stats
-import image
+import medimage as image
 from nki import runners
 
 # parser = argparse.ArgumentParser(description='Generate image with noise.')
