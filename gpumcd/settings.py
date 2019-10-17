@@ -1,21 +1,27 @@
 import configparser
-from os import path
+from os import path,getcwd
 from .gpumcdwrapper import PlanSettings, PhysicsSettings, Float3
 
 class Settings():
-	def __init__(self,gpumcd_datadir=None):
+	def __init__(self,dosia_ini_dir=None):
+		dosia_ini_file = "dosia.ini"
+		if dosia_ini_dir is None:
+			dosia_ini_dir = getcwd()
+
 		defkwargs = {
-			'subdirectories':{
-				'material_data': 'materials_clin',
-				'gpumcd_dll': 'dll',
-				'hounsfield_conversion': 'hounsfield'
+			'directories':{ # relative to dosia.ini or absolute
+				'material_data': path.join(dosia_ini_dir,'data/materials_clin'),
+				'gpumcd_dll': path.join(dosia_ini_dir,'data/dll'),
+				'hounsfield_conversion': path.join(dosia_ini_dir,'data/hounsfield')
 			},
 			'gpumcd_machines':{
-				'MRLinac_MV7': 'machines/machine_mrl_okt2017/gpumcdToolkitMachine.vsm.gpumdt',
-				'Agility_MV6_FF': 'machines/machines_van_thomas/3990Versa06MV/GPUMCD/gpumcdToolkitMachine.segments.gpumdt',
-				'Agility_MV6_NoFF':'machines/machines_van_thomas/3990Versa06FFF/GPUMCD/gpumcdToolkitMachine.segments.gpumdt',
-				'Agility_MV10_FF':'machines/machines_van_thomas/3991.VersaHD10MV/GPUMCD/gpumcdToolkitMachine.segments.gpumdt',
-				'Agility_MV10_NoFF':'machines/machines_van_thomas/3990VersaHD10MVFFF/GPUMCD/gpumcdToolkitMachine.segments.gpumdt'
+				'MRLinac_MV7': '',
+				'Agility_MV6': '',
+				'Agility_MV6_FFF':'',
+				'Agility_MV10':'',
+				'Agility_MV10_FFF':'',
+				'Agility_MV15':'',
+				'Agility_MV18':''
 			},
 			'debug':{
 				'cudaDeviceId':'0',
@@ -53,22 +59,33 @@ class Settings():
 		cfg.optionxform = lambda option: option #prevent python lowercaseing of categories/keys
 		cfg.read_dict(defkwargs)
 		try:
-			cfg.read(path.join(gpumcd_datadir,"dosia.ini"))
+			print(f"Loading {path.join(dosia_ini_dir,dosia_ini_file)}")
+			cfg.read(path.join(dosia_ini_dir,dosia_ini_file))
 		except:
 			print("No ini provided, using default settings.")
 
-		if gpumcd_datadir is None:
-			gpumcd_datadir = ''
-
 		try:
-			self.directories = {} #put absolute paths in self.directories
-			self.directories['material_data'] = path.join(gpumcd_datadir,cfg.get('subdirectories','material_data')).replace('\\','/')
-			self.directories['gpumcd_dll'] = path.join(gpumcd_datadir,cfg.get('subdirectories','gpumcd_dll')).replace('\\','/')
-			self.directories['hounsfield_conversion'] = path.join(gpumcd_datadir,cfg.get('subdirectories','hounsfield_conversion')).replace('\\','/')
+			self.directories = {} #must not contain double backslashes. also test presence.
+			if path.isdir("C:/ProgramData/CMS/GPUMCD"):
+				self.directories['material_data'] = "C:/ProgramData/CMS/GPUMCD"
+			else:
+				self.directories['material_data'] = cfg.get('directories','material_data').replace('\\','/')
+			assert(path.isdir(self.directories['material_data']))
+
+			if path.isdir("C:/Program Files/CMS/Monaco"):
+				self.directories['gpumcd_dll'] = "C:/Program Files/CMS/Monaco"
+				from shutil import copyfile
+				copyfile(path.join(dosia_ini_dir,'data/dll/libgpumcd.dll'),self.directories['gpumcd_dll'])
+			else:
+				self.directories['gpumcd_dll'] = cfg.get('directories','gpumcd_dll').replace('\\','/')
+			assert(path.isdir(self.directories['gpumcd_dll']))
+
+			self.directories['hounsfield_conversion'] = cfg.get('directories','hounsfield_conversion').replace('\\','/')
+			assert(path.isdir(self.directories['hounsfield_conversion']))
 
 			self.machinefiles = cfg._sections['gpumcd_machines']
 			for k,v in self.machinefiles.items():
-				self.machinefiles[k] = path.join(gpumcd_datadir,v).replace('\\','/')
+				self.machinefiles[k] = path.join(v).replace('\\','/')
 
 			self.debug={}
 			self.debug['cudaDeviceId']=cfg.getint('debug','cudaDeviceId')

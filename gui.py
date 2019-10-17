@@ -6,8 +6,7 @@ from gui import *
 from PyQt5.QtGui import QIcon
 
 # todo: load this from an ini? gui setting?
-sett_dir = path.join(path.dirname(path.realpath(__file__)),'data')
-sett = gpumcd.Settings(sett_dir)
+sett = gpumcd.Settings()
 
 class FourPanel(QWidget):
 	def __init__(self, tl, tr, bl, br, *args,**kwargs):
