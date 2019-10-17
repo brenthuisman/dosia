@@ -13,8 +13,6 @@ class Engine():
 		self.ct = ct
 		self.machfile = machfile
 
-		print(f"machfile {machfile}")
-
 		if not path.isfile(path.join(self.settings.directories['gpumcd_dll'],"GPUMonteCarloDoseLibrary.dll")):
 			print("GPUMonteCarloDoseLibrary.dll not found, brace for impact!")
 			# TODO convert to Error and handle somewhere else?
