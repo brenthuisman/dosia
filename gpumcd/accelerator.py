@@ -1,6 +1,7 @@
 from .settings import Settings
 from .gpumcdwrapper import ModifierOrientation
 import dicom
+from os import path
 
 class Accelerator():
 	def __init__(self,rtplan_dicom,sett=None):
@@ -78,9 +79,27 @@ class Accelerator():
 		else:
 			ImportError(f"Unknown type of TreatmentMachineName found: {machinestring}")
 
-		# with open(self.machfile, 'r') as myfile:
-		# 	self.machfile = myfile.read()
-		# print(self.machfile)
+		self.setmaterials()
+
+	def setmaterials(self):
+		if path.isfile(self.machfile):
+			self.materials = []
+			with open(self.machfile, 'r') as myfile:
+				self.machfile_contents = myfile.readlines()
+				for line in self.machfile_contents:
+					try:
+						pieces = line.split(":")
+						if "MEDIUM-NAME" in pieces[0].strip():
+							self.materials.append(pieces[1].strip())
+					except:
+						pass
+			#print(self.materials)
+		else:
+			print("Invalid machine file provided, can't load materials.")
+
+	def setmachfile(self,fname):
+		self.machfile = fname
+		self.setmaterials()
 
 	def __str__(self):
 		return f"Accelerator is of type {self.type}"+('FFF' if self.fff else '')+f" with energy {self.energy}MV and machinefile {self.machfile}."

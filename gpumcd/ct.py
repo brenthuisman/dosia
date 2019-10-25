@@ -36,7 +36,7 @@ class CT():
 		med=dens.copy()
 
 		self.materials = med.density_to_materialindex(dens2mat_table)
-		self.materials.append("Tungsten") # collimator material
+		#self.materials.append("Tungsten") # collimator material
 
 		self.phantom=Phantom(massDensityArray_image=dens,mediumIndexArray_image=med)
 		self.dosemap = image(DimSize=med.header['DimSize'], ElementSpacing=med.header['ElementSpacing'], Offset=med.header['Offset'], dt='<f4')

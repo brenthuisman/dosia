@@ -126,7 +126,7 @@ class DosiaMain(QMainWindow):
 
 	def setmachfilegpumcd(self):
 		machfile=str(QFileDialog.getOpenFileName(self, 'Load Monaco/GPUMCD machine file')[0])
-		self.planpane.plan.accelerator.machfile = machfile
+		self.planpane.plan.accelerator.setmachfile(machfile)
 
 	def calcgpumcd(self):
 		dosia = gpumcd.Dosia(sett,self.ctpane.image,self.planpane.plan,self.plandosepane.image)

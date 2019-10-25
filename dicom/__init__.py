@@ -128,7 +128,7 @@ def run_casedir(sett,casedir,v):
 			ct_obj.dosemap.zero_out()
 
 			for beam in p.beams:
-				eng=gpumcd.Engine(sett,ct_obj,p.accelerator.machfile)
+				eng=gpumcd.Engine(sett,ct_obj,p.accelerator)
 				eng.execute_segments(beam)
 				print (eng.lasterror())
 				eng.get_dose(ct_obj.dosemap)

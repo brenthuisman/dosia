@@ -70,6 +70,10 @@ class Rtplan():
 			isoCenter = [coor*scale for coor in rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].IsocenterPosition]
 			couchAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].PatientSupportAngle #or TableTopEccentricAngle?
 			collimatorAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].BeamLimitingDeviceAngle
+			if str(rtplan_dicom.data.BeamSequence[bi].BeamType).upper() == "STATIC":
+				gantryAngle = rtplan_dicom.data.BeamSequence[bi].ControlPointSequence[0].GantryAngle
+			else:
+				gantryAngle = None
 
 			# N cps = N-1 segments
 			self.beams.append(make_c_array(Segment,nsegments))
@@ -96,12 +100,16 @@ class Rtplan():
 
 				self.beams[bi][cpi].beamInfo.relativeWeight = (cp_next.CumulativeMetersetWeight-cp_this.CumulativeMetersetWeight) * bw
 
-				#the final CPI may only have a weight and nothing else. It may have a GantryAngle... or not.
-				# Therefore, any other data we retrieve from cp_next, under a try()
-				try:
-					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
-				except:
-					self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_this.GantryAngle)
+				if gantryAngle != None:
+					# if static beam, take stored angle
+					self.beams[bi][cpi].beamInfo.gantryAngle = (gantryAngle,gantryAngle)
+				else:
+					# the final CPI may only have a weight and nothing else. It may have a GantryAngle... or not.
+					# Therefore, any other data we retrieve from cp_next, under a try()
+					try:
+						self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_next.GantryAngle)
+					except:
+						self.beams[bi][cpi].beamInfo.gantryAngle = Pair(cp_this.GantryAngle,cp_this.GantryAngle)
 
 				# Test if final cp has BeamLimitingDevicePositionSequence, if not, copy from cp_this
 				try:

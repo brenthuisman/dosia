@@ -1,6 +1,8 @@
 import numpy as np, ctypes, medimage as image
 from os import path
 from .settings import Settings
+from .ct import CT
+from .accelerator import Accelerator
 from .ctypes_helpers import c_array_to_pointer, str2charp, strlist2charpp
 from .gpumcdwrapper import __gpumcd__, BeamFrame, Segment
 
@@ -8,10 +10,18 @@ class Engine():
 	'''
 	Works on Windows 64bit platform only.
 	'''
-	def __init__(self,settings,ct,machfile):
+	def __init__(self,settings,ct,accel):
+		assert(isinstance(settings,Settings))
+		assert(isinstance(ct,CT))
+		assert(isinstance(accel,Accelerator) or isinstance(accel,str))
 		self.settings = settings
 		self.ct = ct
-		self.machfile = machfile
+		if isinstance(accel,str):
+			self.machfile = accel #assume string to machine file path was given
+			self.materials = self.ct.materials
+		else:
+			self.machfile = accel.machfile
+			self.materials = self.ct.materials + accel.materials
 
 		if not path.isfile(path.join(self.settings.directories['gpumcd_dll'],"GPUMonteCarloDoseLibrary.dll")):
 			print("GPUMonteCarloDoseLibrary.dll not found, brace for impact!")
@@ -32,7 +42,7 @@ class Engine():
 			self.settings.debug['cudaDeviceId'],
 			self.settings.debug['verbose'],
 			str2charp(self.settings.directories['material_data']),
-			*strlist2charpp(self.ct.materials),
+			*strlist2charpp(self.materials),
 			self.settings.physicsSettings,
 			self.ct.phantom,
 			str2charp(self.machfile),

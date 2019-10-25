@@ -27,7 +27,7 @@ class Dosia():
 		ct_obj.dosemap.zero_out() #needed?
 
 		for beam in plan.beams:
-			eng=Engine(sett,ct_obj,plan.accelerator.machfile)
+			eng=Engine(sett,ct_obj,plan.accelerator)
 			eng.execute_segments(beam)
 			if eng.lasterror()[0] != 0:
 				print (eng.lasterror())
