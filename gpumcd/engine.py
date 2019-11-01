@@ -15,6 +15,7 @@ class Engine():
 		assert(isinstance(ct,CT))
 		assert(isinstance(accel,Accelerator) or isinstance(accel,str))
 		self.settings = settings
+		self.settings.physicsSettings.magneticField = accel.b
 		self.ct = ct
 		if isinstance(accel,str):
 			self.machfile = accel #assume string to machine file path was given

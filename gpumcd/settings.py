@@ -31,7 +31,9 @@ class Settings():
 			'dose':{
 				'field_margin':'5',
 				'dose_per_fraction':'false',
-				'pinnacle_vmat_interpolation':'true',
+				'sum_beams':'true',
+				'magnetic_field':'true',
+				'pinnacle_vmat_interpolation':'true', #the next ones
 				'monte_carlo_high_precision':'false',
 				'score_dose_to_water':'true',
 				'score_and_transport_in_water':'true'
@@ -40,7 +42,7 @@ class Settings():
 				'photonTransportCutoff':'0.01',
 				'electronTransportCutoff':'0.189',
 				'inputMaxStepLength':'0.75',
-				'magneticField':'0,1,0',
+				'magneticField':'0,0,0',
 				'referenceMedium':'-1',
 				'useElectronInAirSpeedup':'true',
 				'electronInAirSpeedupDensityThreshold':'0.002'

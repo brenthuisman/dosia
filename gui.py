@@ -131,7 +131,7 @@ class DosiaMain(QMainWindow):
 	def calcgpumcd(self):
 		dosia = gpumcd.Dosia(sett,self.ctpane.image,self.planpane.plan,self.plandosepane.image)
 
-		self.gpumcdpane = ImagePane(dosia.gpumcd_dose)
+		self.gpumcdpane = ImagePane(dosia.gpumcd_dose) #FIXME: prepare for sum_beams = False
 		self.menu_gpumcd_save.setDisabled(False)
 		self.resetpanes()
 

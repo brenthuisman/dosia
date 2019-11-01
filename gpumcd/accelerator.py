@@ -1,5 +1,5 @@
 from .settings import Settings
-from .gpumcdwrapper import ModifierOrientation
+from .gpumcdwrapper import ModifierOrientation, Float3
 import dicom
 from os import path
 
@@ -15,6 +15,7 @@ class Accelerator():
 
 		self.type = None
 		self.energy = None
+		self.b = None
 		self.fff = None
 		self.leafs_per_bank = None
 		self.machfile = None
@@ -38,6 +39,7 @@ class Accelerator():
 
 		if '160' in machinestring or 'MLC160' in machinestring or 'M160' in machinestring or 'AGILITY' in machinestring:
 			self.type = 'Agility'
+			self.b = Float3(0,0,0)
 			self.leafs_per_bank = 80
 			self.parallelJawOrientation = ModifierOrientation(-1)
 			self.perpendicularJawOrientation = ModifierOrientation(1)
@@ -60,6 +62,9 @@ class Accelerator():
 					ImportError(f"Agility accelerator found, but unavailable energy {self.energy} encountered.")
 		elif 'MRL' in machinestring:
 			self.type = 'MRL'
+			# In MRL, B field is constant 1.5T in head to feet direction. In dicom coords, -z.
+			# B field is also NOT present in RTPlans.
+			self.b = Float3(0,0,-1.5)
 			self.leafs_per_bank = 80
 			self.parallelJawOrientation = ModifierOrientation(-1)
 			self.perpendicularJawOrientation = ModifierOrientation(0)
@@ -74,6 +79,7 @@ class Accelerator():
 					ImportError(f"Agility accelerator found, but unavailable energy {self.energy} encountered.")
 		elif 'MLC80' in machinestring or 'M80' in machinestring:
 			self.type = 'MLCi80'
+			self.b = Float3(0,0,0)
 			self.leafs_per_bank = 40
 			ImportError("MLCi80 found, but no such machine exists in machine library.")
 		else:

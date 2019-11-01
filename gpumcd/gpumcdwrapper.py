@@ -14,12 +14,17 @@ class ModifierOrientation(ctypes.Structure):
 	def __init__(self,v=-1):
 		self.value = v
 
+	def __str__(self):
+		return f"value {self.value}"
+
 class Int3(ctypes.Structure):
 	_fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("z", ctypes.c_int)]
 	def __init__(self,x=0,y=0,z=0):
 		self.x=x
 		self.y=y
 		self.z=z
+	def __str__(self):
+		return f"x {self.x}, y {self.y}, z {self.z}"
 
 class Float3(ctypes.Structure):
 	_fields_ = [("x", ctypes.c_float), ("y", ctypes.c_float), ("z", ctypes.c_float)]
@@ -27,6 +32,8 @@ class Float3(ctypes.Structure):
 		self.x=x
 		self.y=y
 		self.z=z
+	def __str__(self):
+		return f"x {self.x}, y {self.y}, z {self.z}"
 
 class Pair(ctypes.Structure):
 	_fields_ = [("first", ctypes.c_float), ("second", ctypes.c_float)]
@@ -36,6 +43,8 @@ class Pair(ctypes.Structure):
 			self.second=first
 		else:
 			self.second=second
+	def __str__(self):
+		return f"first {self.first}, second {self.second}"
 
 class PhysicsSettings(ctypes.Structure):
 	_fields_ = [("photonTransportCutoff", ctypes.c_float), ("electronTransportCutoff", ctypes.c_float), ("inputMaxStepLength", ctypes.c_float), ("magneticField", Float3), ("referenceMedium", ctypes.c_int), ("useElectronInAirSpeedup", ctypes.c_int), ("electronInAirSpeedupDensityThreshold", ctypes.c_float)]
@@ -135,6 +144,8 @@ class BeamFrame(ctypes.Structure):
 
 class JawInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("j1", Pair), ("j2", Pair)]
+	def __str__(self):
+		return f"orientation {self.orientation}, j1 {self.j1}, j2 {self.j2}"
 
 class MlcInformation(ctypes.Structure):
 	_fields_ = [("orientation", ModifierOrientation), ("numberLeaves", ctypes.c_int), ("leftLeaves", ctypes.POINTER(Pair)), ("rightLeaves", ctypes.POINTER(Pair))]
@@ -144,11 +155,15 @@ class MlcInformation(ctypes.Structure):
 		self.leftLeaves = ctypes.cast(self.__leftLeaves_data,ctypes.POINTER(Pair))
 		self.rightLeaves = ctypes.cast(self.__rightLeaves_data,ctypes.POINTER(Pair))
 		self.numberLeaves = numberLeaves
+	def __str__(self):
+		return f"numberLeaves {self.numberLeaves}"
 
 class ModifierInformation(ctypes.Structure):
 	_fields_ = [("parallelJaw", JawInformation), ("perpendicularJaw", JawInformation), ("mlc", MlcInformation)]
 	# def __init__(self,numberLeaves):
 	# 	self.mlc = MlcInformation(numberLeaves)
+	def __str__(self):
+		return f"parallelJaw {self.parallelJaw}, perpendicularJaw {self.perpendicularJaw}, mlc {self.mlc}"
 
 class Segment(ctypes.Structure):
 	_fields_ = [("collimator", ModifierInformation), ("beamInfo", BeamInformation)]

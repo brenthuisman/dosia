@@ -26,21 +26,30 @@ class Dosia():
 		ct_obj = CT(sett,ctcpy)
 		ct_obj.dosemap.zero_out() #needed?
 
+		self.gpumcd_dose = []
+		if sett.dose.sum_beams == True:
+			self.gpumcd_dose.append(ct_obj.dosemap.copy())
+
 		for beam in plan.beams:
+			if sett.dose.sum_beams == False:
+				self.gpumcd_dose.append(ct_obj.dosemap.copy())
+			#last index is now always current dosemap.
+
 			eng=Engine(sett,ct_obj,plan.accelerator)
 			eng.execute_segments(beam)
 			if eng.lasterror()[0] != 0:
 				print (eng.lasterror())
-			eng.get_dose(ct_obj.dosemap)
+			eng.get_dose(self.gpumcd_dose[-1])
 
-		if gpumcd_factor:
-			ct_obj.dosemap.mul(plan.NumberOfFractionsPlanned)
-		else:
-			# From what I've seen, dosemaps are exported per plan REGARDLESS of value of DoseSummationType. we try anyway.
-			if plandose.DoseSummationType == 'PLAN':
-				print("Dose was computed for whole PLAN, multiplying GPUMCD dose with number of fractions.")
-				ct_obj.dosemap.mul(plan.NumberOfFractionsPlanned)
+		for d in self.gpumcd_dose:
+			if gpumcd_factor:
+					d.mul(plan.NumberOfFractionsPlanned)
 			else:
-				assert plandose.DoseSummationType == 'FRACTION'
+				# From what I've seen, dosemaps are exported per plan REGARDLESS of value of DoseSummationType. we try anyway.
+				if plandose.DoseSummationType == 'PLAN':
+					print("Dose was computed for whole PLAN, multiplying GPUMCD dose with number of fractions.")
+					d.mul(plan.NumberOfFractionsPlanned)
+				else:
+					assert plandose.DoseSummationType == 'FRACTION'
 
-		self.gpumcd_dose = ct_obj.dosemap
+		# self.gpumcd_dose = ct_obj.dosemap
