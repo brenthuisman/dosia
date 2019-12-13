@@ -1,7 +1,7 @@
 import medimage as image,gpumcd,dicom,numpy as np
 from .widgets import BSlider
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QSlider
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt,QSize
 
@@ -35,8 +35,12 @@ class ImagePane(QWidget):
 		self.axselect.addItems(["x","y","z"])
 		self.axselect.currentIndexChanged.connect(self.setax)
 
-		self.sliceselect = QSpinBox()
-		self.sliceselect.setRange(0,self.image[self.imi].imdata.shape[self.axi])
+		# self.sliceselect = QSpinBox()
+
+		self.sliceselect = QSlider(Qt.Horizontal,self)
+		self.sliceselect.setTickPosition(QSlider.TicksBelow)
+		self.sliceselect.setMinimum(0)
+		self.sliceselect.setMaximum(self.image[self.imi].imdata.shape[self.axi])
 		self.sliceselect.setValue(self.slicei)
 		self.sliceselect.valueChanged.connect(self.setslice)
 
@@ -56,13 +60,14 @@ class ImagePane(QWidget):
 
 
 	def setimagecanvas(self):
-		self.sliceselect.setRange(0,self.image[sgitelf.imi].imdata.shape[self.axi]-1)
+		self.sliceselect.setMinimum(0)
+		self.sliceselect.setMaximum(self.image[self.imi].imdata.shape[self.axi]-1)
 		self.sliceselect.setValue(self.slicei)
 
 		# print(f"imi {self.imi}, axi {self.axi}, slicei {self.slicei}")
-		index_ = list(range(len(self.image[self.imi].imdata.shape)))
+		index_ = [0]*len(self.image[self.imi].imdata.shape)
 		index_[self.axi] = self.slicei
-		# print(f"index {index_}")
+		print(f"index {index_}")
 		slice_ = self.image[self.imi].get_slices_at_index(index_)[self.axi]
 		self.canvas.setslice(slice_)
 		self.update()
@@ -84,21 +89,21 @@ class ImagePane(QWidget):
 
 class ImageCanvas(QWidget):
 	def __init__(self, *args,**kwargs):
-		print("jawoor!")
 		super().__init__(*args,**kwargs)
 		# self.setslice(im_slice)
 
 
 	def setslice(self,im_slice):
 		# import scipy.misc
-		# scipy.misc.imsave("d:/slicex.png",im_slice)
+		# scipy.misc.imsave("d:/slice.png",im_slice)
 		s=np.uint8(np.interp(im_slice, (im_slice.min(), im_slice.max()), (0, 255)).T)
 		im = np.copy(np.rot90(np.rot90(s)),order='C')
-		self.qimage = QImage(im.data,im.shape[1],im.shape[0],im.shape[1]*1,QImage.Format_Grayscale8)
+		self.qimage = QImage(im.data,im.shape[1],im.shape[0],im.shape[1],QImage.Format_Grayscale8)
 
 	def paintEvent(self,e):
 		painter = QPainter(self)
 		painter.drawPixmap(self.rect(), QPixmap(self.qimage))
+		painter.end()
 
 	# def minimumSizeHint(self):
 	# 	return QSize(100, 100)
