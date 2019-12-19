@@ -4,6 +4,7 @@ from collections import Counter
 
 sett = gpumcd.Settings()
 loadimages = False
+verbose = False
 
 dumpdir = r"Z:\brent\dicom_incoming\20190412_w19_1149\DICOM"
 
@@ -61,24 +62,11 @@ for dirpath, dirnames, filenames in os.walk(dumpdir):
 			else:
 				notdcms.append(firstfname)
 		except Exception as e:
-			print(f"Problem with {dirpath}: {e}")
+			if verbose:
+				print(f"Problem with {dirpath}: {e}")
 			problem.append(dirpath)
 			problemtypes[str(e)]+=1
 
-
-
-# for a in dumpdir.rglob('*'):
-# 	if a.is_file():
-# 		try:
-# 			b = dicom.pydicom_object(a)
-# 			if b.valid:
-# 				dcms.append(b)
-# 			else:
-# 				notdcms.append(a)
-# 		except Exception as e:
-# 			print(f"Problem with {a}: {e}")
-# 			problem.append(a)
-# 			problemtypes[str(e)]+=1
 
 print(f"DCMS {len(dcms)}")
 print(f"not DCMS {len(notdcms)}")
@@ -86,18 +74,31 @@ print(f"problem DCMS {len(problem)}")
 print(problemtypes.most_common())
 
 
-# quit()
+if verbose:
+	[print(f"stud {a.studyid}sop {a.sopid}") for a in dcms]
 
-# [print(f"stud {a.studyid}sop {a.sopid}") for a in dcms]
+def printit(studies):
+	for studyid,study in studies.items():
+		print('brent',studyid)
+		# print(type(study))
+		for sopid,sop in study.items():
+			if isinstance(sop,dict): # filter cts weg
+				print(sopid)
+				# sop['dose']
+				# sop['plan']
+				# study['ct']
+				print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
+		# print(v)
 
-# def printit(studies):
-# 	for studyid,v in studies.items():
-# 		print('brent',studyid,'\n')
-# 		print(v)
-# 		if isinstance(v,dict): #skip ct
-# 			print(v['plan'].data.BeamSequence[0].TreatmentMachineName)
+		# if isinstance(v,dict): #skip ct
+		# 	for sop in v.values():
+		# 		print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
+			# try:
+			# 	print(v['plan'].data.BeamSequence[0].TreatmentMachineName)
+			# except KeyError:
+			# 	print (v.keys())
 
-
+printit(studies)
 # for dirr in glob.glob(casedir+"/*/*"):
 # 	print (dirr)
 # 	try:
