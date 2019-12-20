@@ -95,6 +95,8 @@ class Settings():
 			self.debug['output']=cfg.get('debug','output')
 
 			self.dose={}
+			self.dose['sum_beams']=cfg.getboolean('dose','sum_beams')
+			self.dose['magnetic_field']=cfg.getboolean('dose','magnetic_field')
 			self.dose['field_margin']=cfg.getfloat('dose','field_margin')
 			self.dose['dose_per_fraction']=cfg.getboolean('dose','dose_per_fraction')
 			self.dose['pinnacle_vmat_interpolation']=cfg.getboolean('dose','pinnacle_vmat_interpolation')

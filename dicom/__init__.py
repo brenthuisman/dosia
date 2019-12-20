@@ -63,6 +63,10 @@ class pydicom_object():
 				# plan base no beamdosespec
 				self.BeamDoseSpecificationPoint = None
 				self.BeamDose = None
+			try:
+				self.data.BeamSequence[0]
+			except:
+				self.valid = False
 
 
 def build_casedir(dname,loadimages=True):

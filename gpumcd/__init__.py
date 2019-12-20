@@ -27,11 +27,11 @@ class Dosia():
 		ct_obj.dosemap.zero_out() #needed?
 
 		self.gpumcd_dose = []
-		if sett.dose.sum_beams == True:
+		if sett.dose['sum_beams'] == True:
 			self.gpumcd_dose.append(ct_obj.dosemap.copy())
 
 		for beam in plan.beams:
-			if sett.dose.sum_beams == False:
+			if sett.dose['sum_beams'] == False:
 				self.gpumcd_dose.append(ct_obj.dosemap.copy())
 			#last index is now always current dosemap.
 

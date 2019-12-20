@@ -83,11 +83,18 @@ def printit(studies):
 		# print(type(study))
 		for sopid,sop in study.items():
 			if isinstance(sop,dict): # filter cts weg
+				#FIXME: check wether SOP has both plan and dose.
 				print(sopid)
+				print(sop)
 				# sop['dose']
 				# sop['plan']
 				# study['ct']
-				print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
+				print(sop['plan'].filename)
+				try:
+					print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
+				except:
+					# print(sop['plan'].filename)
+					print(sop['plan'].data)
 		# print(v)
 
 		# if isinstance(v,dict): #skip ct
