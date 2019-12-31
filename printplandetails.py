@@ -79,22 +79,29 @@ if verbose:
 
 def printit(studies):
 	for studyid,study in studies.items():
-		print('brent',studyid)
+		# print('brent',studyid)
 		# print(type(study))
 		for sopid,sop in study.items():
 			if isinstance(sop,dict): # filter cts weg
 				#FIXME: check wether SOP has both plan and dose.
-				print(sopid)
-				print(sop)
+				# print(sopid)
+				#print(sop)
 				# sop['dose']
 				# sop['plan']
 				# study['ct']
-				print(sop['plan'].filename)
 				try:
-					print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
-				except:
+					a=sop['plan'].filename
+					# print(sopid)
 					# print(sop['plan'].filename)
-					print(sop['plan'].data)
+					# print(sop['plan'].data.BeamSequence[0].TreatmentMachineName)
+				except:
+					print("EXCEPT: NO PLAN FOUND!!!!!")
+					print(f"{len(list(sop))} other items found in this sop.")
+					print(f"First: {list(sop)[0]}. Filename:")
+					print(sop[list(sop)[0]].filename)
+					# print(sop['plan'].data)
+
+
 		# print(v)
 
 		# if isinstance(v,dict): #skip ct
