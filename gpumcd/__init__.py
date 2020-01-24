@@ -22,7 +22,7 @@ class Dosia():
 			gpumcd_factor = True
 			print("TPS dose it outside of expected planned dose per fraction in beamdosespecificationpoint. Your TPS probably exported the PLAN dose instead of FRACTION dose, GPUMCD dose will be multiplied with the number of fractions.")
 		ctcpy = ct
-		ctcpy.crop_as(plandose)
+		ctcpy.crop_as(plandose,cval=-1000) #background of a ct should be air, so -1000
 		ct_obj = CT(sett,ctcpy)
 		ct_obj.dosemap.zero_out() #needed?
 

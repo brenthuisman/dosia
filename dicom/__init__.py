@@ -175,7 +175,7 @@ def run_casedir(sett,casedir,v):
 				gpumcd_factor = True
 			d['dose_im'].saveas(path.join(casedir,"xdr",sopid,"dose_tps.xdr"))
 			ctcpy = v['ct_im']
-			ctcpy.crop_as(d['dose_im'])
+			ctcpy.crop_as(d['dose_im'],cval=-1000) #background of a ct should be air, so -1000
 			ctcpy.saveas(path.join(casedir,"xdr",sopid,"ct_on_dosegrid.xdr"))
 			ct_obj = gpumcd.CT(sett,ctcpy)
 
