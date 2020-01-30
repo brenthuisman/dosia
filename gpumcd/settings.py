@@ -33,10 +33,10 @@ class Settings():
 				'dose_per_fraction':'false',
 				'sum_beams':'true',
 				'magnetic_field':'true',
-				'pinnacle_vmat_interpolation':'true', #the next ones
-				'monte_carlo_high_precision':'false',
-				'score_dose_to_water':'true',
-				'score_and_transport_in_water':'true'
+				#'pinnacle_vmat_interpolation':'true', #the next ones
+				#'monte_carlo_high_precision':'false',
+				#'score_dose_to_water':'true',
+				#'score_and_transport_in_water':'true'
 			},
 			'gpumcd_physicssettings':{
 				'photonTransportCutoff':'0.01',
