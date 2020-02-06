@@ -5,9 +5,6 @@ from os import path
 from gui import *
 from PyQt5.QtGui import QIcon
 
-# todo: load this from an ini? gui setting?
-sett = gpumcd.Settings()
-
 class FourPanel(QWidget):
 	def __init__(self, tl, tr, bl, br, *args,**kwargs):
 		super().__init__(*args,**kwargs)
@@ -26,6 +23,37 @@ class FourPanel(QWidget):
 		self.setLayout(mainLayout)
 
 
+class SettingsWindow(QWidget): #FIXME, waarom QWindow niet gevonden?
+	def __init__(self,parent, *args,**kwargs):
+		super().__init__(*args,**kwargs)
+
+		l = QVBoxLayout()
+		sett = parent.sett
+
+		self.menu_advanced_sumbeams = QCheckBox("Sum dose over beams")
+		self.menu_advanced_sumbeams.setChecked(sett.dose['sum_beams'])
+		self.menu_advanced_magnetic_field = QSpinBox()
+		self.menu_advanced_magnetic_field.setValue(sett.dose['magnetic_field'])
+		self.menu_advanced_magnetic_field.setSuffix('T magnetic field')
+		self.menu_advanced_field_margin = QSpinBox()
+		self.menu_advanced_field_margin.setValue(sett.dose['field_margin'])
+		self.menu_advanced_field_margin.setSuffix('mm field margin')
+		self.menu_advanced_dose_per_fraction = QCheckBox("Dose per fraction or all fractions")
+		self.menu_advanced_dose_per_fraction.setChecked(sett.dose['dose_per_fraction'])
+
+		l.addWidget(self.menu_advanced_sumbeams,1)
+		l.addWidget(self.menu_advanced_magnetic_field,1)
+		l.addWidget(self.menu_advanced_field_margin,1)
+		l.addWidget(self.menu_advanced_dose_per_fraction,1)
+
+		# wid = QWidget(self) #voor als dit een QMainWindow is
+		# self.setCentralWidget(wid)
+		# wid.setLayout(l)
+
+		self.setLayout(l)
+
+
+
 class DosiaMain(QMainWindow):
 	def __init__(self, *args,**kwargs):
 		super().__init__(*args,**kwargs)
@@ -33,6 +61,8 @@ class DosiaMain(QMainWindow):
 		self.resize(800, 800)
 		self.move(300, 300)
 		self.setWindowIcon(QIcon('data/icon.svg'))
+
+		self.sett = gpumcd.Settings()
 
 		# Menu bar
 		menu_load_file = QAction('&File(s) (RTPlan, Dose, CT)', self)
@@ -43,9 +73,11 @@ class DosiaMain(QMainWindow):
 		# menu_open_linaclog.triggered.connect(self.loadlinaclog)
 		# menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
 
-		self.menu_gpumcd_setmachfile = QAction('&Set machine file manually', self)
-		self.menu_gpumcd_setmachfile.triggered.connect(self.setmachfilegpumcd)
-		self.menu_gpumcd_setmachfile.setDisabled(True)
+		# self.menu_gpumcd_setmachfile = QAction('&Set machine file manually', self)
+		# self.menu_gpumcd_setmachfile.triggered.connect(self.setmachfilegpumcd)
+		# self.menu_gpumcd_setmachfile.setDisabled(True)
+		self.menu_gpumcd_advanced = QAction('&Advanced', self)
+		self.menu_gpumcd_advanced.triggered.connect(self.settingswindow)
 		self.menu_gpumcd_calculate = QAction('&Calculate Dose', self)
 		self.menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
 		self.menu_gpumcd_calculate.setDisabled(True)
@@ -59,9 +91,10 @@ class DosiaMain(QMainWindow):
 		menu_open.addAction(menu_load_dir)
 
 		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
-		menu_gpumcd.addAction(self.menu_gpumcd_setmachfile)
+		# menu_gpumcd.addAction(self.menu_gpumcd_setmachfile)
 		menu_gpumcd.addAction(self.menu_gpumcd_calculate)
 		menu_gpumcd.addAction(self.menu_gpumcd_save)
+		menu_gpumcd.addAction(self.menu_gpumcd_advanced)
 
 		# Quadrants
 		self.planpane = QWidget()
@@ -80,10 +113,14 @@ class DosiaMain(QMainWindow):
 		try:
 			if self.planpane.ready and self.plandosepane.ready and self.ctpane.ready:
 				self.menu_gpumcd_calculate.setDisabled(False)
-				self.menu_gpumcd_setmachfile.setDisabled(False)
+				# self.menu_gpumcd_setmachfile.setDisabled(False)
 		except:
 			pass #first launch
 		self.setCentralWidget(FourPanel(self.planpane,self.plandosepane,self.ctpane,self.gpumcdpane))
+
+	def settingswindow(self):
+		self.setwin = SettingsWindow(self)
+		self.setwin.show()
 
 	#TODO: error handling in loading files
 
@@ -93,7 +130,7 @@ class DosiaMain(QMainWindow):
 		for fname in files:
 			opendicomobject = dicom.pydicom_object(fname)
 			if opendicomobject.modality == "RTPLAN":
-				self.planpane = PlanPane(fname,sett)
+				self.planpane = PlanPane(fname,self.sett)
 			if opendicomobject.modality == "CT":
 				self.ctpane = ImagePane(fname)
 			if opendicomobject.modality == "RTDOSE":
@@ -129,7 +166,7 @@ class DosiaMain(QMainWindow):
 		self.planpane.plan.accelerator.setmachfile(machfile)
 
 	def calcgpumcd(self):
-		dosia = gpumcd.Dosia(sett,self.ctpane.image[0],self.planpane.plan,self.plandosepane.image[0])
+		dosia = gpumcd.Dosia(self.sett,self.ctpane.image[0],self.planpane.plan,self.plandosepane.image[0])
 
 		self.gpumcdpane = ImagePane(dosia.gpumcd_dose) #FIXME: prepare for sum_beams = False
 		self.menu_gpumcd_save.setDisabled(False)

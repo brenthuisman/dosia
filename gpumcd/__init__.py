@@ -42,13 +42,22 @@ class Dosia():
 			eng.get_dose(self.gpumcd_dose[-1])
 
 		for d in self.gpumcd_dose:
+			d.mul(plan.NumberOfFractionsPlanned)
+
+			#If I look at dicompyler code, at no point do I see conditionals for multiplying with NumberOfFractionsPlanned. 
 			if gpumcd_factor:
 					d.mul(plan.NumberOfFractionsPlanned)
 			else:
 				# From what I've seen, dosemaps are exported per plan REGARDLESS of value of DoseSummationType. we try anyway.
-				if plandose.DoseSummationType == 'PLAN':
+				# https://dicom.innolitics.com/ciods/rt-dose/rt-dose/3004000a
+				if str(plandose.DoseSummationType).upper() == 'PLAN':
 					print("Dose was computed for whole PLAN, multiplying GPUMCD dose with number of fractions.")
 					d.mul(plan.NumberOfFractionsPlanned)
+				elif str(plandose.DoseSummationType).upper() == 'FRACTION':
+					#Editors note: 'FRACTION' here refers to fraction-GROUP-SEQUENCE! There may be multiple in a plan (and thus in a dose), altough I've never seen it. I could not find a defintion of 'fraction-group'. However, it does not correspond to what we call a fraction at the AvL: that's a session in DICOM parlance.
+					print("Dose was computed for FRACTION (-group!), multiplying GPUMCD dose with number of fractions.")
+					d.mul(plan.NumberOfFractionsPlanned)
+				elif str(plandose.DoseSummationType).upper() == 'BEAM':
 				else:
 					assert plandose.DoseSummationType == 'FRACTION'
 

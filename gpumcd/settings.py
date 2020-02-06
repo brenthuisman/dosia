@@ -97,7 +97,7 @@ class Settings():
 			self.dose={}
 			self.dose['sum_beams']=cfg.getboolean('dose','sum_beams')
 			self.dose['magnetic_field']=cfg.getboolean('dose','magnetic_field')
-			self.dose['field_margin']=cfg.getfloat('dose','field_margin')
+			self.dose['field_margin']=cfg.getint('dose','field_margin')
 			self.dose['dose_per_fraction']=cfg.getboolean('dose','dose_per_fraction')
 			# self.dose['pinnacle_vmat_interpolation']=cfg.getboolean('dose','pinnacle_vmat_interpolation')
 			# self.dose['monte_carlo_high_precision']=cfg.getboolean('dose','monte_carlo_high_precision')

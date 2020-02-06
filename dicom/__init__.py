@@ -37,6 +37,7 @@ class pydicom_object():
 			self.DoseUnits = str(self.data.DoseUnits)
 			self.DoseType = str(self.data.DoseType)
 			self.DoseSummationType = str(self.data.DoseSummationType)
+			print(self.DoseSummationType)
 			assert self.DoseUnits == "GY", "This dose image is not in GY units."
 			assert self.DoseType == "PHYSICAL", "This dose image is not physical dose."
 			assert self.DoseSummationType in ["PLAN","FRACTION"], "This dose image is not per plan or fraction."
