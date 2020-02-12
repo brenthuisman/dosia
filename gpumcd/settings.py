@@ -11,7 +11,7 @@ class Settings():
 		defkwargs = {
 			'directories':{ # relative to dosia.ini or absolute
 				'material_data': path.join(dosia_ini_dir,'data/materials_clin'),
-				'gpumcd_dll': path.join(dosia_ini_dir,'data/dll'),
+				'gpumcd_dll': path.join(dosia_ini_dir,'dll'),
 				'hounsfield_conversion': path.join(dosia_ini_dir,'data/hounsfield')
 			},
 			'gpumcd_machines':{
@@ -77,7 +77,7 @@ class Settings():
 			if path.isdir("C:/Program Files/CMS/Monaco"):
 				self.directories['gpumcd_dll'] = "C:/Program Files/CMS/Monaco"
 				from shutil import copyfile
-				copyfile(path.join(dosia_ini_dir,'data/dll/libgpumcd.dll'),self.directories['gpumcd_dll'])
+				copyfile(path.join(dosia_ini_dir,'dll/libgpumcd.dll'),self.directories['gpumcd_dll'])
 			else:
 				self.directories['gpumcd_dll'] = cfg.get('directories','gpumcd_dll').replace('\\','/')
 			assert(path.isdir(self.directories['gpumcd_dll']))

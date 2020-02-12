@@ -1,0 +1,8 @@
+The files that you should copy here are:
+
+* cudart64_80.dll
+* curand64_80.dll
+* msvcp120.dll (possibly)
+* msvcr120.dll (possibly)
+* libgpumcd.dll
+* GPUMonteCarloDoseLibrary.dll

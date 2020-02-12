@@ -40,7 +40,7 @@ class pydicom_object():
 			print(self.DoseSummationType)
 			assert self.DoseUnits == "GY", "This dose image is not in GY units."
 			assert self.DoseType == "PHYSICAL", "This dose image is not physical dose."
-			assert self.DoseSummationType in ["PLAN","FRACTION"], "This dose image is not per plan or fraction."
+			# assert self.DoseSummationType in ["PLAN","FRACTION"], "This dose image is not per plan or fraction."
 		elif self.modality == "RTPLAN":
 			self.sopid = str(self.data.SOPInstanceUID)
 			self.PatientPosition = str(self.data.PatientSetupSequence[0].PatientPosition)

@@ -16,14 +16,16 @@ Files in the root are executable scripts, subdirectories are libraries. The `dat
 
 `dicom` contains a small helper class to quickly get relevant data from a dicom file, and a function that helps you loop the dose engine over large quantities of treatments.
 
-`dll` contains some dlls required to run GPUMCD, including the wrapper dll that I provide to you without source code, because at this time I am not 100% sure I can license it the same as this repo. All files here are provided as a courtesy and are excluded from the license of this repo.
+`dll` is empty, and needs to be populated with some dlls by you. See `dll/placeholder.txt`. I do not redistribute them because I am not sure that I can.
 
 Installation
 ------------
 
 Right now, you must install the dependencies yourself.
 
-    $ pip(3) install medimage pyqt5
+    $ pip3 install medimage pyqt5
+
+Then, populated the `dll` directory to wherever pip installed the package, or, if checkout the git repo, in that directory. Alternatively, copy `dosia.ini`,`data` and `dll` from here, put it somewhere, and make sure you instantiate the Settings-object with this directory.
 
 This repo does NOT include GPUMCD, as this is not freely available software. You need to obtain GPUMCD from Elekta, in the form of a file called `GPUMonteCarloDoseLibrary.dll`, which could be provided to you as part of the Monaco treatment planning software, typically installed to `C:\Program Files\CMS\Monaco`. Right now, this file must be copied and placed in the `dll` subdir of this project.
 

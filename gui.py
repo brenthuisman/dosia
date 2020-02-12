@@ -111,7 +111,7 @@ class DosiaMain(QMainWindow):
 
 	def resetpanes(self):
 		try:
-			if self.planpane.ready and self.plandosepane.ready and self.ctpane.ready:
+			if self.planpane.ready and self.ctpane.ready: #no plandoseready
 				self.menu_gpumcd_calculate.setDisabled(False)
 				# self.menu_gpumcd_setmachfile.setDisabled(False)
 		except:
@@ -166,7 +166,14 @@ class DosiaMain(QMainWindow):
 		self.planpane.plan.accelerator.setmachfile(machfile)
 
 	def calcgpumcd(self):
-		dosia = gpumcd.Dosia(self.sett,self.ctpane.image[0],self.planpane.plan,self.plandosepane.image[0])
+		try:
+			self.plandosepane.ready
+			dosia = gpumcd.Dosia(self.sett,self.ctpane.image[0],self.planpane.plan,self.plandosepane.image[0])
+		except:
+			c = self.ctpane.image[0].copy()
+			c.resample([3,3,3])
+			c.zero_out()
+			dosia = gpumcd.Dosia(self.sett,self.ctpane.image[0],self.planpane.plan,c)
 
 		self.gpumcdpane = ImagePane(dosia.gpumcd_dose) #FIXME: prepare for sum_beams = False
 		self.menu_gpumcd_save.setDisabled(False)
