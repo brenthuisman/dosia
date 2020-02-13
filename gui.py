@@ -181,8 +181,11 @@ class DosiaMain(QMainWindow):
 
 	def savegpumcd(self):
 		fname = str(QFileDialog.getSaveFileName(self, 'Save GPUMCD Dose')[0])
-		for i,im in enumerate(self.gpumcdpane.image):
-			im.saveas(fname+str(i)+'.xdr')
+		if self.sett.dose['sum_beams']:
+			self.gpumcdpane.image[0].saveas(fname+'.xdr')
+		else:
+			for i,im in enumerate(self.gpumcdpane.image):
+				im.saveas(fname+str(i)+'.xdr')
 		# self.topleft = QWidget()#somewidget(fname)
 		# self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
 
