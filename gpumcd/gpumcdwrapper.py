@@ -81,7 +81,7 @@ class Phantom(ctypes.Structure):
 			med = kwargs['mediumIndexArray_image']
 			if not isinstance(med,image.image) or not isinstance(dens,image.image):
 				raise IOError("Could not instantiate phantom, either or both massDensityArray_image and mediumIndexArray_image are not valid instances of image.image.")
-			if dens.ndim() != 3 or med.ndim() is not 3:
+			if dens.ndim() != 3 or med.ndim() != 3:
 				raise IOError("Sorry, phantoms can only be instantiated with 3D images.")
 			if dens.imdata.dtype != 'float32':
 				# print("dens is not float")

@@ -33,6 +33,7 @@ class Settings():
 				'dose_per_fraction':'false',
 				'sum_beams':'true',
 				'magnetic_field':'true',
+				'times_nb_planned_fractions':'false',
 				#'pinnacle_vmat_interpolation':'true', #the next ones
 				#'monte_carlo_high_precision':'false',
 				#'score_dose_to_water':'true',
@@ -99,6 +100,7 @@ class Settings():
 			self.dose['magnetic_field']=cfg.getboolean('dose','magnetic_field')
 			self.dose['field_margin']=cfg.getint('dose','field_margin')
 			self.dose['dose_per_fraction']=cfg.getboolean('dose','dose_per_fraction')
+			self.dose['times_nb_planned_fractions']=cfg.getboolean('dose','times_nb_planned_fractions')
 			# self.dose['pinnacle_vmat_interpolation']=cfg.getboolean('dose','pinnacle_vmat_interpolation')
 			# self.dose['monte_carlo_high_precision']=cfg.getboolean('dose','monte_carlo_high_precision')
 			# self.dose['score_dose_to_water']=cfg.getboolean('dose','score_dose_to_water')
