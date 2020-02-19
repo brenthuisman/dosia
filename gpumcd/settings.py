@@ -31,6 +31,7 @@ class Settings():
 			'dose':{
 				'field_margin':'5',
 				'dose_per_fraction':'false',
+				'output_cgy':'false',
 				'sum_beams':'true',
 				'magnetic_field':'true',
 				'times_nb_planned_fractions':'false',
@@ -96,6 +97,7 @@ class Settings():
 			self.debug['output']=cfg.get('debug','output')
 
 			self.dose={}
+			self.dose['output_cgy']=cfg.getboolean('dose','output_cgy')
 			self.dose['sum_beams']=cfg.getboolean('dose','sum_beams')
 			self.dose['magnetic_field']=cfg.getboolean('dose','magnetic_field')
 			self.dose['field_margin']=cfg.getint('dose','field_margin')

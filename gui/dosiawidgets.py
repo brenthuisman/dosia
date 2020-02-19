@@ -1,14 +1,15 @@
 import medimage as image,gpumcd,dicom,numpy as np
 from .widgets import BSlider
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QSlider
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QSlider, QPushButton, QFileDialog
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt,QSize
 
 class ImagePane(QWidget):
-	def __init__(self, input_, *args,**kwargs):
+	def __init__(self, input_, sett, *args,**kwargs):
 		super().__init__(*args,**kwargs)
 
+		self.sett = sett
 		self.image = []
 		if isinstance(input_,image.image):
 			self.image.append(input_.copy())
@@ -44,9 +45,14 @@ class ImagePane(QWidget):
 		self.sliceselect.setValue(self.slicei)
 		self.sliceselect.valueChanged.connect(self.setslice)
 
+		self.savebutton = QPushButton('Save (.xdr)', self)
+		self.savebutton.setToolTip('Save this image or images as XDR')
+		self.savebutton.clicked.connect(self.save)
+
 		imnav.addWidget(self.imselect,0)
 		imnav.addWidget(self.axselect,0)
 		imnav.addWidget(self.sliceselect,0)
+		imnav.addWidget(self.savebutton,0)
 
 		l = QVBoxLayout()
 		self.canvas = ImageCanvas() #blank for now
@@ -57,6 +63,15 @@ class ImagePane(QWidget):
 		self.setLayout(l)
 
 		self.ready = True
+
+
+	def save(self):
+		fname = str(QFileDialog.getSaveFileName(self, 'Save as xdr')[0])
+		if self.sett.dose['sum_beams']:
+			self.image[0].saveas(fname+'.xdr')
+		else:
+			for i,im in enumerate(self.image):
+				im.saveas(fname+str(i)+'.xdr')
 
 
 	def setimagecanvas(self):

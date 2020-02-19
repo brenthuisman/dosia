@@ -76,14 +76,11 @@ class DosiaMain(QMainWindow):
 		# self.menu_gpumcd_setmachfile = QAction('&Set machine file manually', self)
 		# self.menu_gpumcd_setmachfile.triggered.connect(self.setmachfilegpumcd)
 		# self.menu_gpumcd_setmachfile.setDisabled(True)
-		self.menu_gpumcd_advanced = QAction('&Advanced', self)
-		self.menu_gpumcd_advanced.triggered.connect(self.settingswindow)
+		# self.menu_gpumcd_advanced = QAction('&Advanced', self)
+		# self.menu_gpumcd_advanced.triggered.connect(self.settingswindow)
 		self.menu_gpumcd_calculate = QAction('&Calculate Dose', self)
 		self.menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
 		self.menu_gpumcd_calculate.setDisabled(True)
-		self.menu_gpumcd_save = QAction('&Save Dose', self)
-		self.menu_gpumcd_save.triggered.connect(self.savegpumcd)
-		self.menu_gpumcd_save.setDisabled(True)
 
 		menu_bar = self.menuBar()
 		menu_open = menu_bar.addMenu('&Load')
@@ -93,8 +90,7 @@ class DosiaMain(QMainWindow):
 		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
 		# menu_gpumcd.addAction(self.menu_gpumcd_setmachfile)
 		menu_gpumcd.addAction(self.menu_gpumcd_calculate)
-		menu_gpumcd.addAction(self.menu_gpumcd_save)
-		menu_gpumcd.addAction(self.menu_gpumcd_advanced)
+		# menu_gpumcd.addAction(self.menu_gpumcd_advanced)
 
 		# Quadrants
 		self.planpane = QWidget()
@@ -132,9 +128,9 @@ class DosiaMain(QMainWindow):
 			if opendicomobject.modality == "RTPLAN":
 				self.planpane = PlanPane(fname,self.sett)
 			if opendicomobject.modality == "CT":
-				self.ctpane = ImagePane(fname)
+				self.ctpane = ImagePane(fname,self.sett)
 			if opendicomobject.modality == "RTDOSE":
-				self.plandosepane = ImagePane(fname)
+				self.plandosepane = ImagePane(fname,self.sett)
 		# except Exception as e:
 		# 	self.popup(f"That was not a valid DICOM file.\n{str(e)}")
 		# 	return
@@ -145,7 +141,7 @@ class DosiaMain(QMainWindow):
 		try:
 			opendicomobject = dicom.pydicom_object(fname)
 			assert opendicomobject.modality == "CT", "That directory did not contain a valid set of DICOM CT slices."
-			self.ctpane = ImagePane(fname)
+			self.ctpane = ImagePane(fname,self.sett)
 		except Exception as e:
 			self.popup(f"That was not a valid DICOM file.\n{str(e)}")
 			return
@@ -174,20 +170,11 @@ class DosiaMain(QMainWindow):
 			c.resample([3,3,3])
 			c.zero_out()
 			dosia = gpumcd.Dosia(self.sett,self.ctpane.image[0],self.planpane.plan,c)
-
-		self.gpumcdpane = ImagePane(dosia.gpumcd_dose) #FIXME: prepare for sum_beams = False
-		self.menu_gpumcd_save.setDisabled(False)
+		self.gpumcdpane = ImagePane(dosia.gpumcd_dose,self.sett)
+		if self.sett.dose['output_cgy']:
+			for img in self.gpumcdpane.image:
+				img.mul(100)
 		self.resetpanes()
-
-	def savegpumcd(self):
-		fname = str(QFileDialog.getSaveFileName(self, 'Save GPUMCD Dose')[0])
-		if self.sett.dose['sum_beams']:
-			self.gpumcdpane.image[0].saveas(fname+'.xdr')
-		else:
-			for i,im in enumerate(self.gpumcdpane.image):
-				im.saveas(fname+str(i)+'.xdr')
-		# self.topleft = QWidget()#somewidget(fname)
-		# self.setCentralWidget(FourPanel(self.topleft,self.topright,self.bottomleft,self.bottomright))
 
 	def popup(self,message):
 		a = QMessageBox()

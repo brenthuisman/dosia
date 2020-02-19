@@ -62,9 +62,11 @@ class Accelerator():
 					ImportError(f"Agility accelerator found, but unavailable energy {self.energy} encountered.")
 		elif 'MRL' in machinestring:
 			self.type = 'MRL'
-			# In MRL, B field is constant 1.5T in head to feet direction. In dicom coords, -z.
-			# B field is also NOT present in RTPlans.
-			self.b = Float3(0,0,-1.5)
+			# In MRL, B field is constant 1.5T in head to feet direction. In dicom coords, -z. FIXED-IEC according to GPUMCD doc, which is defined here:
+			# http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.8.8.25.6.html
+			# B field is also NOT present in RTPlans, but in some machien files, not all.
+			# Since it never changes, lets hard code it.
+			self.b = Float3(0,-1.5,0)
 			self.leafs_per_bank = 80
 			self.parallelJawOrientation = ModifierOrientation(-1)
 			self.perpendicularJawOrientation = ModifierOrientation(0)
