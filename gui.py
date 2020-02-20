@@ -62,8 +62,10 @@ class DosiaMain(QMainWindow):
 		# Must load a valid dosia.ini dir
 		if self.guisettings.value("dosiainidir") == None:
 			self.setdosiainidir()
-		else:
+		elif path.isdir(self.guisettings.value("dosiainidir")):
 			self.sett = gpumcd.Settings(self.guisettings.value("dosiainidir"))
+		else:
+			self.setdosiainidir()
 
 		# Menu bar
 		self.menu_load_file = QAction('&File(s) (RTPlan, Dose, CT)', self)
