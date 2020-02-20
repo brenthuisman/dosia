@@ -1,7 +1,7 @@
 Dosia
 =====
 
-This package comprises Python bindings for GPUMCD (Hissoiny et al. 2011), dicom parser for CT's, RTDoses, and RTplans, and a dose computation tool based on the GPUMCD bindings. Note that this means this package won't work on platforms other than Windows x64, as GPUMCD does not.
+This package comprises Python bindings for GPUMCD (Hissoiny et al. 2011), dicom parser for CT's, RTDoses, and RTplans, and a dose computation tool based on the GPUMCD bindings. Note that this means this package won't work on platforms other than Windows x64, as GPUMCD does not. You also need a CUDA 8 capable card with at minimum 2GB of VMEM.
 
 In the design my philosophy is, library first, scripts second, gui third. I am happy to report I can deliver on all fronts at this time :)
 
@@ -23,11 +23,11 @@ Installation
 
 Right now, you must install the dependencies yourself.
 
-    $ pip3 install medimage pyqt5
+    $ pip3 install -U medimage pyqt5
 
 `git pull` or download this repo somewhere, and optionally move the `example_dosia_ini_dir` (you could have multiple). Then, populate the `dll` directory in that 'dosia.ini directory'. Put your machinefiles in the machines directory, and make sure dosia.ini points to them (use relative paths).
 
-This repo does NOT include GPUMCD, as this is not freely available software. You need to obtain GPUMCD from Elekta, in the form of a file called `GPUMonteCarloDoseLibrary.dll`, which could be provided to you as part of the Monaco treatment planning software, typically installed to `C:\Program Files\CMS\Monaco`.
+This repo does NOT include GPUMCD, as this is not freely available software. You need to obtain GPUMCD from Elekta, in the form of a file called `GPUMonteCarloDoseLibrary.dll`, which could be provided to ygiou as part of the Monaco treatment planning software, typically installed to `C:\Program Files\CMS\Monaco`.
 
 Usage
 -----
