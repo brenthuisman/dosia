@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          StainlessSteel302
+MASS-DENSITY:         8.06
+NUMBER-OF-ELEMENTS:   6
+ATOMIC-NUMBER:        6        14       24       25      26       28      
+ATOMIC-MASS:          12.011   28.085   51.996   54.938  55.845   58.693
+PROPORTIONS:          0.001    0.007    0.180    0.010   0.712    0.090
+PROPORTIONS-BY-MASS:  yes

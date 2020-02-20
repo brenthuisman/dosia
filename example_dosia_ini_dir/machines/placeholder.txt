@@ -1,0 +1,1 @@
+You'll need some machinefiles, and you could them here. Make sure dosia.ini refers to the right files.

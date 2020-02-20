@@ -9,12 +9,12 @@ class Settings():
 			dosia_ini_dir = getcwd()
 
 		defkwargs = {
-			'directories':{ # relative to dosia.ini or absolute
-				'material_data': path.join(dosia_ini_dir,'data/materials_clin'),
-				'gpumcd_dll': path.join(dosia_ini_dir,'dll'),
-				'hounsfield_conversion': path.join(dosia_ini_dir,'data/hounsfield')
+			'directories':{ # relative to dosia.ini
+				'material_data': 'materials',
+				'gpumcd_dll': 'dll',
+				'hounsfield_conversion': 'hounsfield'
 			},
-			'gpumcd_machines':{
+			'gpumcd_machines':{ # relative to dosia.ini
 				'MRLinac_MV7': '',
 				'Agility_MV6': '',
 				'Agility_MV6_FFF':'',
@@ -73,7 +73,7 @@ class Settings():
 			if path.isdir("C:/ProgramData/CMS/GPUMCD"):
 				self.directories['material_data'] = "C:/ProgramData/CMS/GPUMCD"
 			else:
-				self.directories['material_data'] = cfg.get('directories','material_data').replace('\\','/')
+				self.directories['material_data'] = path.join(dosia_ini_dir,cfg.get('directories','material_data').replace('\\','/'))
 			assert(path.isdir(self.directories['material_data']))
 
 			if path.isdir("C:/Program Files/CMS/Monaco"):
@@ -81,15 +81,15 @@ class Settings():
 				from shutil import copyfile
 				copyfile(path.join(dosia_ini_dir,'dll/libgpumcd.dll'),self.directories['gpumcd_dll'])
 			else:
-				self.directories['gpumcd_dll'] = cfg.get('directories','gpumcd_dll').replace('\\','/')
+				self.directories['gpumcd_dll'] = path.join(dosia_ini_dir,cfg.get('directories','gpumcd_dll').replace('\\','/'))
 			assert(path.isdir(self.directories['gpumcd_dll']))
 
-			self.directories['hounsfield_conversion'] = cfg.get('directories','hounsfield_conversion').replace('\\','/')
+			self.directories['hounsfield_conversion'] = path.join(dosia_ini_dir,cfg.get('directories','hounsfield_conversion').replace('\\','/'))
 			assert(path.isdir(self.directories['hounsfield_conversion']))
 
 			self.machinefiles = cfg._sections['gpumcd_machines']
 			for k,v in self.machinefiles.items():
-				self.machinefiles[k] = path.join(v).replace('\\','/')
+				self.machinefiles[k] = path.join(dosia_ini_dir,v).replace('\\','/')
 
 			self.debug={}
 			self.debug['cudaDeviceId']=cfg.getint('debug','cudaDeviceId')

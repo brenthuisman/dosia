@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          CerroShield
+MASS-DENSITY:         9.71
+NUMBER-OF-ELEMENTS:   3
+ATOMIC-NUMBER:        50		82		83	
+ATOMIC-MASS:          118.711	207.2	208.980
+PROPORTIONS:          15.50		32.00	52.50
+PROPORTIONS-BY-MASS:  yes

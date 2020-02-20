@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          SoftTissueIcruFourComponent
+MASS-DENSITY:         1.0
+NUMBER-OF-ELEMENTS:   4
+ATOMIC-NUMBER:        1        6         7         8
+ATOMIC-MASS:          1.008    12.011    14.007    15.999
+PROPORTIONS:          0.101172  0.111000  0.026000  0.761828
+PROPORTIONS-BY-MASS:  yes

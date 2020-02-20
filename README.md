@@ -16,7 +16,7 @@ Files in the root are executable scripts, subdirectories are libraries. The `dat
 
 `dicom` contains a small helper class to quickly get relevant data from a dicom file, and a function that helps you loop the dose engine over large quantities of treatments.
 
-`dll` is empty, and needs to be populated with some dlls by you. See `dll/placeholder.txt`. I do not redistribute them because I am not sure that I can.
+`example_dosia_ini_dir` is a 'starter' for a 'dosia.ini directory'. This directory requires a dosia.ini file, with which you can configure Dosia. In addition, some other data is required: hounsfield tables, material data, GPUMCD machine files and some dlls including GPUMCD itself. The former two I provide here, as those data are public domain (your institute may use another HU-table of course). The latter two I do not provide, but the directories provide instructions in `placeholder.txt` on how to configure them.
 
 Installation
 ------------
@@ -25,11 +25,11 @@ Right now, you must install the dependencies yourself.
 
     $ pip3 install medimage pyqt5
 
-Then, populated the `dll` directory to wherever pip installed the package, or, if checkout the git repo, in that directory. Alternatively, copy `dosia.ini`,`data` and `dll` from here, put it somewhere, and make sure you instantiate the Settings-object with this directory.
+`git pull` or download this repo somewhere, and optionally move the `example_dosia_ini_dir` (you could have multiple). Then, populate the `dll` directory in that 'dosia.ini directory'. Put your machinefiles in the machines directory, and make sure dosia.ini points to them (use relative paths).
 
-This repo does NOT include GPUMCD, as this is not freely available software. You need to obtain GPUMCD from Elekta, in the form of a file called `GPUMonteCarloDoseLibrary.dll`, which could be provided to you as part of the Monaco treatment planning software, typically installed to `C:\Program Files\CMS\Monaco`. Right now, this file must be copied and placed in the `dll` subdir of this project.
+This repo does NOT include GPUMCD, as this is not freely available software. You need to obtain GPUMCD from Elekta, in the form of a file called `GPUMonteCarloDoseLibrary.dll`, which could be provided to you as part of the Monaco treatment planning software, typically installed to `C:\Program Files\CMS\Monaco`.
 
 Usage
 -----
 
-A few scripts using the libraries are provided in the root of this repo. The most sophisticated one is gui.py. This allows you to load a ct, plan, dose combo and inspect the images and plan. Right now, you must manually load the machine file as well. If GPUMCD was found, the dose calculation should be available and work!.
+A few scripts using the libraries are provided in the root of this repo. The most sophisticated one is gui.py. This allows you to load a ct, plan, dose combo and inspect the images and plan. Upon first run of the program, you need to set a 'dosia.ini directory', which will be remembered for further runs, but can always be changes in the menu.

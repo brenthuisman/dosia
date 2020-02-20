@@ -4,6 +4,7 @@ import medimage as image, dicom, gpumcd, numpy as np
 from os import path
 from gui import *
 from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QSettings
 
 class FourPanel(QWidget):
 	def __init__(self, tl, tr, bl, br, *args,**kwargs):
@@ -46,12 +47,7 @@ class SettingsWindow(QWidget): #FIXME, waarom QWindow niet gevonden?
 		l.addWidget(self.menu_advanced_field_margin,1)
 		l.addWidget(self.menu_advanced_dose_per_fraction,1)
 
-		# wid = QWidget(self) #voor als dit een QMainWindow is
-		# self.setCentralWidget(wid)
-		# wid.setLayout(l)
-
 		self.setLayout(l)
-
 
 
 class DosiaMain(QMainWindow):
@@ -60,37 +56,41 @@ class DosiaMain(QMainWindow):
 		self.setWindowTitle("Dosia")
 		self.resize(800, 800)
 		self.move(300, 300)
-		self.setWindowIcon(QIcon('data/icon.svg'))
+		self.setWindowIcon(QIcon('gui/icon.svg'))
+		self.guisettings = QSettings("BrentH", "Dosia")
 
-		self.sett = gpumcd.Settings()
+		# Must load a valid dosia.ini dir
+		if self.guisettings.value("dosiainidir") == None:
+			self.setdosiainidir()
+		else:
+			self.sett = gpumcd.Settings(self.guisettings.value("dosiainidir"))
 
 		# Menu bar
-		menu_load_file = QAction('&File(s) (RTPlan, Dose, CT)', self)
-		menu_load_file.triggered.connect(self.loadfiles)
-		menu_load_dir = QAction('&Directory (CT)', self)
-		menu_load_dir.triggered.connect(self.loaddir)
-		# menu_open_linaclog = QAction('&Linac Log', self)
-		# menu_open_linaclog.triggered.connect(self.loadlinaclog)
-		# menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
+		self.menu_load_file = QAction('&File(s) (RTPlan, Dose, CT)', self)
+		self.menu_load_file.triggered.connect(self.loadfiles)
+		self.menu_load_dir = QAction('&Directory (CT)', self)
+		self.menu_load_dir.triggered.connect(self.loaddir)
+		# self.menu_open_linaclog = QAction('&Linac Log', self)
+		# self.menu_open_linaclog.triggered.connect(self.loadlinaclog)
+		# self.menu_open_linaclog.setDisabled(True) #TODO: enable if rtplan loaded
 
-		# self.menu_gpumcd_setmachfile = QAction('&Set machine file manually', self)
-		# self.menu_gpumcd_setmachfile.triggered.connect(self.setmachfilegpumcd)
-		# self.menu_gpumcd_setmachfile.setDisabled(True)
-		# self.menu_gpumcd_advanced = QAction('&Advanced', self)
-		# self.menu_gpumcd_advanced.triggered.connect(self.settingswindow)
-		self.menu_gpumcd_calculate = QAction('&Calculate Dose', self)
+		self.menu_gpumcd_calculate = QAction('&Calculate Dose with GPUMCD', self)
 		self.menu_gpumcd_calculate.triggered.connect(self.calcgpumcd)
 		self.menu_gpumcd_calculate.setDisabled(True)
 
-		menu_bar = self.menuBar()
-		menu_open = menu_bar.addMenu('&Load')
-		menu_open.addAction(menu_load_file)
-		menu_open.addAction(menu_load_dir)
+		self.menu_setdosiainidir = QAction('&Set Dosia.ini directory', self)
+		self.menu_setdosiainidir.triggered.connect(self.setdosiainidir)
 
-		menu_gpumcd = menu_bar.addMenu('&GPUMCD')
-		# menu_gpumcd.addAction(self.menu_gpumcd_setmachfile)
-		menu_gpumcd.addAction(self.menu_gpumcd_calculate)
-		# menu_gpumcd.addAction(self.menu_gpumcd_advanced)
+		self.menu_bar = self.menuBar()
+		self.menu_open = self.menu_bar.addMenu('&Load')
+		self.menu_open.addAction(self.menu_load_file)
+		self.menu_open.addAction(self.menu_load_dir)
+
+		self.menu_gpumcd = self.menu_bar.addMenu('&Calculate')
+		self.menu_gpumcd.addAction(self.menu_gpumcd_calculate)
+
+		self.menu_dosia = self.menu_bar.addMenu('&Dosia')
+		self.menu_dosia.addAction(self.menu_setdosiainidir)
 
 		# Quadrants
 		self.planpane = QWidget()
@@ -100,7 +100,7 @@ class DosiaMain(QMainWindow):
 		self.resetpanes()
 
 		# statusbar
-		self.statusBar().showMessage('Ready')
+		self.statusBar().showMessage(f'dosia.ini in {self.guisettings.value("dosiainidir")} loaded.')
 
 		# done!
 		self.show()
@@ -114,13 +114,8 @@ class DosiaMain(QMainWindow):
 			pass #first launch
 		self.setCentralWidget(FourPanel(self.planpane,self.plandosepane,self.ctpane,self.gpumcdpane))
 
-	def settingswindow(self):
-		self.setwin = SettingsWindow(self)
-		self.setwin.show()
-
-	#TODO: error handling in loading files
-
 	def loadfiles(self):
+		# TODO: error handling in loading files
 		files=QFileDialog.getOpenFileNames(self, 'Load Dicom file(s) (RTPlan, Dose, CT)')[0]
 		# try:
 		for fname in files:
@@ -153,13 +148,14 @@ class DosiaMain(QMainWindow):
 		pass
 
 	def loadlinaclog(self):
+		# TODO
 		# fname = str(QFileDialog.getOpenFileName(self, 'Open Dicom Dose')[0])
 		# self.topleft = QWidget()#somewidget(fname)
 		self.resetpanes()
 
-	def setmachfilegpumcd(self):
-		machfile=str(QFileDialog.getOpenFileName(self, 'Load Monaco/GPUMCD machine file')[0])
-		self.planpane.plan.accelerator.setmachfile(machfile)
+	def setdosiainidir(self):
+		dosiainidir = str(QFileDialog.getExistingDirectory(self, 'Set Dosia.ini directory directory'))
+		self.guisettings.setValue("dosiainidir", dosiainidir)
 
 	def calcgpumcd(self):
 		try:
@@ -187,22 +183,5 @@ if __name__ == '__main__':
 	import sys
 
 	app = QApplication(sys.argv)
-
-	#### TEST PLAN VIEWER
-	# fname="D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.1025001435024675917588954042793107482"
-	# fname="D:/postdoc/analyses/correcteddicom/F180220C/1.3.46.670589.13.586672257.20190716134201.81016_0001_000000_156328075700a1.dcm"
-	# fname="D:/postdoc/analyses/correcteddicom/MonacoPhantom/2.16.840.1.113669.2.931128.223131424.20180410170709.445490_0001_000000_1533630935003e.dcm"
-	# p=PlanPane(fname)
-	# p.show()
-
-	#### TEST IMAGE VIEWER
-	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/2. HalsSupracl + C   3.0  B40s PLAN"
-	# fname = "D:/postdoc/analyses/gpumcd_python/dicom/20181101 CTRT KNO-hals/1. UPI263538/2.25.117736802457958133832899838499337503296"
-	# p=ImagePane(fname)
-	# p.show()
-
-
-	#### TEST MAIN
 	Main = DosiaMain()
-
 	sys.exit(app.exec())

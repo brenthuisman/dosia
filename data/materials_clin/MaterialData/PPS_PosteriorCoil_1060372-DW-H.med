@@ -1,8 +1,0 @@
-VERSION:                0.1
-MEDIUM-NAME:            PPS_PosteriorCoil_1060372-DW-H
-MASS-DENSITY:           0.18202
-NUMBER-OF-ELEMENTS:     11
-ATOMIC-NUMBER:          1          5          6          7          8          12          13          14          17          20          29          
-ATOMIC-MASS:            1.00794    10.81100   12.01070   14.00670   15.99940   24.30500    26.98154    28.08550    35.45300    40.07800    63.54600    
-PROPORTIONS:            0.00542    0.00054    0.62239    0.01458    0.15989    0.00118     0.00537     0.01938     0.00124     0.01691     0.15311    
-PROPORTIONS-BY-MASS:    yes

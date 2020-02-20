@@ -1,0 +1,8 @@
+VERSION:              0.1
+MEDIUM-NAME:          BoneCompactIcru
+MASS-DENSITY:         1.85
+NUMBER-OF-ELEMENTS:   8
+ATOMIC-NUMBER:        1     6      7      8      12     15     16     20
+ATOMIC-MASS:          1.008 12.011 14.007 15.999 24.305 30.974 32.060 40.078
+PROPORTIONS:          0.064 0.278  0.027  0.410  0.002  0.070  0.002  0.147
+PROPORTIONS-BY-MASS:  yes
