@@ -1,7 +1,7 @@
 import medimage as image,gpumcd,dicom,numpy as np
 from .widgets import BSlider
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QSlider, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QSlider, QPushButton, QFileDialog, QLabel
 from PyQt5.QtGui import QPainter, QPen, QImage, QPixmap
 from PyQt5.QtCore import Qt,QSize
 
@@ -13,12 +13,15 @@ class ImagePane(QWidget):
 		self.image = []
 		if isinstance(input_,image.image):
 			self.image.append(input_.copy())
+			self.fname="GPUMCD"
 		elif isinstance(input_,list):
+			self.fname="GPUMCD"
 			for im in input_:
 				assert(isinstance(im,image.image))
 				self.image.append(im.copy())
 		else:
 			self.image.append(image.image(input_))
+			self.fname=str(input_)
 
 		self.imi = 0
 		self.axi = 0
@@ -55,8 +58,10 @@ class ImagePane(QWidget):
 		imnav.addWidget(self.savebutton,0)
 
 		l = QVBoxLayout()
+		self.fname_label = QLabel(self.fname)
 		self.canvas = ImageCanvas() #blank for now
 		self.setimagecanvas()
+		l.addWidget(self.fname_label,0)
 		l.addLayout(imnav,0)
 		l.addWidget(self.canvas,1)
 
