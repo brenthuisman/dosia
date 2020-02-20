@@ -32,4 +32,4 @@ This repo does NOT include GPUMCD, as this is not freely available software. You
 Usage
 -----
 
-A few scripts using the libraries are provided in the root of this repo. The most sophisticated one is gui.py. This allows you to load a ct, plan, dose combo and inspect the images and plan. Upon first run of the program, you need to set a 'dosia.ini directory', which will be remembered for further runs, but can always be changes in the menu.
+A few scripts using the libraries are provided in the root of this repo. The most sophisticated one is gui.py. This allows you to load a ct, plan, dose combo and inspect the images and plan using a simple viewer. Upon first run of the program, you need to set a 'dosia.ini directory', which will be remembered for further runs, but can always be changes in the menu. If you load a TPS dose, that grid is use for the GPUMCD dose calc. If you do not load a TPS dose, the a 3x3x3mm^3 grid is created with the CT extents and used for the GPUMCD dose calc.
